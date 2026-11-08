@@ -43,12 +43,18 @@ export function createRateLimiter({
   };
 }
 
-/** Best-effort client IP from proxy headers (Railway / Vercel / nginx). */
+/**
+ * Client IP for rate limiting. Prefers X-Real-IP, which Railway's edge sets to
+ * the caller's address, then the last X-Forwarded-For hop (added by the nearest
+ * proxy). Never the first hop: that is whatever the client sent, so keying on
+ * it let anyone dodge the limit with a fresh value per request.
+ */
 export function clientIp(headers: Pick<Headers, "get">): string {
-  const forwarded = headers.get("x-forwarded-for");
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  return headers.get("x-real-ip")?.trim() || "unknown";
+  const real = headers.get("x-real-ip")?.trim();
+  if (real) return real;
+  const hops = (headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((hop) => hop.trim())
+    .filter(Boolean);
+  return hops.at(-1) ?? "unknown";
 }

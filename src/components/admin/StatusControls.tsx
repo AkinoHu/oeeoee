@@ -89,6 +89,7 @@ export function PartnerStatusControl({ applicationId, current }: { applicationId
   return (
     <form action={action}>
       <input type="hidden" name="applicationId" value={applicationId} />
+      <input type="hidden" name="from" value={current} />
       <div className="grid grid-cols-2 gap-2">
         {PARTNER_STATUSES.map((status) => {
           const active = status === current;
