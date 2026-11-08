@@ -1,7 +1,7 @@
 "use client";
 
 import { LoaderCircle, Plus } from "lucide-react";
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { createDevice, type CreateDeviceState } from "@/app/console/actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/primitives";
@@ -24,11 +24,21 @@ export function AddDeviceForm({ plants, baseUrl }: { plants: PlantOption[]; base
   if (reveal) return <TokenReveal reveal={reveal} baseUrl={baseUrl} onDone={() => setDismissed(reveal.deviceId)} />;
 
   return (
-    <form action={action} className="grid gap-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_auto] sm:items-end" noValidate>
+    <form
+      // onSubmit, not `action`: React resets a form after an action, which would
+      // wipe the plant and size choices whenever the name is rejected.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        startTransition(() => action(fd));
+      }}
+      className="grid gap-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_auto] sm:items-end"
+      noValidate
+    >
       <div>
         <Label htmlFor="device-name">{t("devices.name")}</Label>
         <Input id="device-name" name="name" required maxLength={60} placeholder={t("devices.namePlaceholder")} aria-invalid={Boolean(errors.name)} />
-        {errors.name && <p className="mt-1 text-xs text-rose">{errors.name}</p>}
+        {errors.name && <p className="mt-1 text-xs text-rose">{t("devices.invalid.name")}</p>}
       </div>
       <div>
         <Label htmlFor="device-plant">{t("devices.plant")}</Label>

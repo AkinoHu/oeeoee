@@ -3,7 +3,7 @@ import { assessVitals, type PlantLike } from "@/lib/vitals";
 import { simulateTelemetry } from "./demo";
 import { detectIntent, detectLanguage, extractMemory, fallbackReply, refusalReply, vitalsLine } from "./fallback";
 import { buildSystemPrompt, describeVitals, type BrainContext } from "./prompt";
-import { bucketize, seriesStats } from "./series";
+import { bucketize, seriesRuns, seriesStats, timeTicks } from "./series";
 import { DEFAULT_REMINDERS } from "./settings";
 
 const pothos: PlantLike = {
@@ -220,5 +220,30 @@ describe("series bucketing", () => {
     expect(bucketize(rows, start, end, 4, (r) => r.v, "max")).toEqual([3, null, 10, null]);
     expect(seriesStats([null, 2, 5, null, 3])).toEqual({ min: 2, max: 5, latest: 3 });
     expect(seriesStats([null])).toBeNull();
+  });
+
+  it("splits a series into runs so lone points can be drawn as dots", () => {
+    // A pot with a single reading (or sparse reports) has no run of 2+ points:
+    // a line-only chart drew nothing at all.
+    expect(seriesRuns([null, 5, null, null])).toEqual([[1]]);
+    expect(seriesRuns([1, 2, null, 4, null, 6, 7, 8])).toEqual([[0, 1], [3], [5, 6, 7]]);
+    expect(seriesRuns([null, null])).toEqual([]);
+  });
+
+  it("puts day ticks at local midnight, also in half-hour time zones", () => {
+    const start = Date.parse("2026-06-01T00:00:00Z");
+    const end = start + 3 * 86400000;
+    const day = (tz: string) => (t: number) =>
+      new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(t);
+    expect(timeTicks(start, end, 24, "UTC").map(day("UTC"))).toEqual(["Mon 00:00", "Tue 00:00", "Wed 00:00"]);
+    // India is UTC+5:30: hour boundaries fall on :30. Rounding put the "day" tick at 23:30,
+    // so every weekday label marked the end of that day instead of its start.
+    expect(timeTicks(start, end, 24, "Asia/Kolkata").map(day("Asia/Kolkata"))).toEqual(["Tue 00:30", "Wed 00:30", "Thu 00:30"]);
+    expect(timeTicks(start, start + 86400000, 6, "Asia/Tokyo").map(day("Asia/Tokyo"))).toEqual([
+      "Mon 12:00",
+      "Mon 18:00",
+      "Tue 00:00",
+      "Tue 06:00",
+    ]);
   });
 });

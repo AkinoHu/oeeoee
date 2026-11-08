@@ -414,8 +414,8 @@ function pickExpression(issues: VitalIssue[], status: VitalStatus, night: boolea
 
 /**
  * What the pot should do right now.
- * - Water when soil moisture is below the plant's minimum, the tank isn't
- *   empty and the last watering has had time to soak in. Dose scales with the
+ * - Water when a fresh (≤ 1 h old) soil reading is below the plant's minimum,
+ *   the tank isn't empty and the last watering has had time to soak in. Dose scales with the
  *   deficit (to the middle of the target range) and the pot size.
  * - Grow light follows a `lightHours` window centred on early afternoon and
  *   stays off when ambient light already meets the plant's minimum lux.
@@ -435,7 +435,9 @@ export function careActions(
 
 function pumpDose(profile: CareProfile, t: TelemetrySnapshot | null | undefined, now: Date, opts: CareOptions): number {
   const soil = num(t?.soilMoisture);
-  if (soil === null) return 0;
+  if (!t || soil === null) return 0;
+  // Never water on a stale reading (pot offline, or only old readings backfilled).
+  if (now.getTime() - t.recordedAt.getTime() > OFFLINE_AFTER_MINUTES * 60000) return 0;
   const [min, max] = profile.soilMoisture;
   if (soil >= min) return 0;
   const tank = num(t?.waterLevel);

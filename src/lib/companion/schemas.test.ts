@@ -42,6 +42,22 @@ describe("telemetry body", () => {
     expect(telemetryBodySchema.safeParse({ readings: [{ recordedAt: "yesterday", soilMoisture: 3 }] }).success).toBe(false);
     expect(telemetryBodySchema.safeParse({ readings: Array.from({ length: 501 }, () => ({ airTemp: 20 })) }).success).toBe(false);
   });
+
+  it("rejects numeric timestamps outside the range a Date can hold", () => {
+    // Number.MAX_SAFE_INTEGER ms is past the Date range (±8.64e15 ms): Invalid Date reached the DB and 500'd.
+    expect(telemetryBodySchema.safeParse({ soilMoisture: 40, recordedAt: Number.MAX_SAFE_INTEGER }).success).toBe(false);
+    expect(telemetryBodySchema.safeParse({ readings: [{ soilMoisture: 40, recordedAt: 8.64e15 + 1 }] }).success).toBe(false);
+  });
+
+  it("requires recordedAt on every reading of a multi-reading batch", () => {
+    // Without timestamps every row was stamped "now", so the "latest" reading was picked arbitrarily.
+    expect(telemetryBodySchema.safeParse({ readings: [{ soilMoisture: 12 }, { soilMoisture: 48 }] }).success).toBe(false);
+    expect(
+      telemetryBodySchema.safeParse({ readings: [{ recordedAt: 1780308000, soilMoisture: 12 }, { soilMoisture: 48 }] }).success,
+    ).toBe(false);
+    // A one-reading batch may still omit it (it means "now").
+    expect(telemetryBodySchema.safeParse({ readings: [{ soilMoisture: 48 }] }).success).toBe(true);
+  });
 });
 
 describe("chat bodies", () => {

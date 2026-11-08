@@ -1,11 +1,12 @@
 "use client";
 
 import { Check, LoaderCircle, Sprout } from "lucide-react";
-import { useActionState, useMemo, useOptimistic, useState, useSyncExternalStore } from "react";
+import { startTransition, useActionState, useOptimistic, useState, useSyncExternalStore } from "react";
 import { saveCompanionSettings, type FormState } from "@/app/console/actions";
 import { Button } from "@/components/ui/button";
 import { Card, Input, Label, Select, Textarea } from "@/components/ui/primitives";
 import { useT } from "@/i18n/client";
+import type { MessageKey } from "@/i18n/messages";
 import { COMPANION_LANGUAGES, COMPANION_MODELS, VOICE_PRESETS, type ReminderSettings } from "@/lib/companion/settings";
 import { cn } from "@/lib/utils";
 import { SectionTitle } from "./PageHeader";
@@ -31,22 +32,53 @@ function useBrowserTimeZone(): string | null {
   );
 }
 
+const NO_ZONES: string[] = [];
+let browserZones: string[] | null = null;
+
+/**
+ * The browser's time-zone list, client-only: Node's list differs from Firefox's
+ * and Safari's, so rendering it on the server breaks hydration.
+ */
+function useTimeZoneList(): string[] {
+  return useSyncExternalStore(
+    subscribeNoop,
+    () => {
+      if (!browserZones) {
+        try {
+          browserZones = Intl.supportedValuesOf("timeZone");
+        } catch {
+          browserZones = NO_ZONES;
+        }
+      }
+      return browserZones;
+    },
+    () => NO_ZONES,
+  );
+}
+
 function FieldError({ message }: { message?: string }) {
   return message ? <p className="mt-1 text-xs text-rose">{message}</p> : null;
 }
+
+/** Translated message per field; the server's zod messages are English-only. */
+const FIELD_ERROR: Partial<Record<string, MessageKey<"console">>> = {
+  name: "companion.invalid.name",
+  maxTokens: "companion.invalid.maxTokens",
+  sedentaryMinutes: "companion.invalid.sedentaryMinutes",
+  hydrationMinutes: "companion.invalid.hydrationMinutes",
+  workStart: "companion.invalid.workHours",
+  workEnd: "companion.invalid.workHours",
+  quietStart: "companion.invalid.quietHours",
+  quietEnd: "companion.invalid.quietHours",
+  timezone: "companion.invalid.timezone",
+};
 
 export function CompanionSettingsForm({ initial, plantPersonality }: { initial: CompanionSettingsValues; plantPersonality: string | null }) {
   const t = useT("console");
   const [state, formAction, pending] = useActionState<FormState, FormData>(saveCompanionSettings, { ok: null });
   const [optimistic, setOptimistic] = useOptimistic<FormState, FormState>(state, (_s, next) => next);
   const browserTz = useBrowserTimeZone();
-  const zones = useMemo(() => {
-    try {
-      return Intl.supportedValuesOf("timeZone");
-    } catch {
-      return [];
-    }
-  }, []);
+  const zones = useTimeZoneList();
 
   // Controlled fields so a failed save never wipes the user's edits.
   const [v, setV] = useState({
@@ -58,12 +90,21 @@ export function CompanionSettingsForm({ initial, plantPersonality }: { initial: 
     setV((prev) => ({ ...prev, [key]: e.target.value }));
   const errors = optimistic.ok === false ? (optimistic.errors ?? {}) : {};
   const invalid = (key: string) => (errors[key] ? "border-rose/60 focus:border-rose/60" : undefined);
+  const errorText = (key: string) => (errors[key] ? t(FIELD_ERROR[key] ?? "companion.invalid") : undefined);
 
   return (
     <form
-      action={(fd) => {
-        setOptimistic({ ok: true, at: Date.now() });
-        formAction(fd);
+      // onSubmit, not `action`: React resets a form after an action, which snaps
+      // controlled <select>s and radios back to their first-render values (and the
+      // next save would send those). While saving, clear the old status instead of
+      // claiming "Saved" before the server has answered.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        startTransition(() => {
+          setOptimistic({ ok: null });
+          formAction(fd);
+        });
       }}
       className="space-y-5"
       noValidate
@@ -75,7 +116,7 @@ export function CompanionSettingsForm({ initial, plantPersonality }: { initial: 
           <div>
             <Label htmlFor="name">{t("companion.name")}</Label>
             <Input id="name" name="name" value={v.name} onChange={set("name")} maxLength={40} required className={invalid("name")} />
-            <FieldError message={errors.name} />
+            <FieldError message={errorText("name")} />
           </div>
           <div>
             <Label htmlFor="language">{t("companion.language")}</Label>
@@ -191,7 +232,7 @@ export function CompanionSettingsForm({ initial, plantPersonality }: { initial: 
               aria-describedby="maxTokens-hint"
               className={invalid("maxTokens")}
             />
-            <FieldError message={errors.maxTokens} />
+            <FieldError message={errorText("maxTokens")} />
             <p id="maxTokens-hint" className="mt-1.5 text-xs text-muted">
               {t("companion.maxTokensHint")}
             </p>
@@ -222,7 +263,7 @@ export function CompanionSettingsForm({ initial, plantPersonality }: { initial: 
                   {t("companion.minutes")}
                 </span>
               </div>
-              <FieldError message={errors[key]} />
+              <FieldError message={errorText(key)} />
             </div>
           ))}
           {(
@@ -254,7 +295,7 @@ export function CompanionSettingsForm({ initial, plantPersonality }: { initial: 
                   className={invalid(to)}
                 />
               </div>
-              <FieldError message={errors[from] ?? errors[to]} />
+              <FieldError message={errorText(from) ?? errorText(to)} />
               {hint && <p className="mt-1.5 text-xs text-muted">{t(hint)}</p>}
             </fieldset>
           ))}
@@ -282,7 +323,7 @@ export function CompanionSettingsForm({ initial, plantPersonality }: { initial: 
                 <option key={z} value={z} />
               ))}
             </datalist>
-            <FieldError message={errors.timezone} />
+            <FieldError message={errorText("timezone")} />
             <p className="mt-1.5 text-xs text-muted">{t("companion.timezoneHint")}</p>
           </div>
         </div>
