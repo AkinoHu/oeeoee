@@ -124,6 +124,15 @@ body {
   }
 }
 
+/* Scroll-reveal blocks are server-rendered at opacity 0 and faded in by JS:
+   keep them readable when scripting is off. */
+@media (scripting: none) {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

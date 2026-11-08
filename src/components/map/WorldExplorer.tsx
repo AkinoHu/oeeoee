@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDown, ChevronRight, Globe2 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import {
   useCallback,
   useEffect,
@@ -33,7 +33,7 @@ import {
   type View,
 } from "./engine/view";
 import { LocationChip, type LocateState, type VisitorView } from "./LocationChip";
-import { distanceKm, featureIdAt, requestPosition } from "./locate";
+import { distanceKm, featureIdAt, refineForSmallMarkets, requestPosition } from "./locate";
 import { MapPanel } from "./MapPanel";
 import { RegionChips, type RegionStat } from "./RegionChips";
 import { StatusDot } from "./StatusDot";
@@ -62,6 +62,8 @@ const MODE_CLASS: Record<SalesMode, number> = {
 const MODE_RANK: Record<SalesMode, number> = { full: 0, pot_only: 1, coming_soon: 2 };
 /** Markets whose land covers fewer fine dots than this also get a centre marker. */
 const SMALL_MARKET_DOTS = 40;
+/** Hero buttons: size "md" on phones, "lg" from the lg breakpoint. */
+const HERO_BUTTON_LG = "lg:h-12 lg:rounded-2xl lg:px-6 lg:text-base";
 
 const noopSubscribe = () => () => {};
 
@@ -275,13 +277,16 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
       el.style.transform = `translate3d(${sx.toFixed(1)}px, ${sy.toFixed(1)}px, 0)`;
     });
     if (!settled) return;
-    // Hide labels that would collide with a higher-priority one (DOM order = priority)
-    // or that fall outside the visible map (behind the panel / off screen).
+    // Hide labels that would collide with a higher-priority one (forced = hovered /
+    // selected first, then DOM order) or that fall outside the visible map (behind the
+    // panel / off screen).
     const bounds = root.getBoundingClientRect();
     const maxX = bounds.left + Number(root.dataset.maxX || bounds.width);
     const maxY = bounds.top + Number(root.dataset.maxY || bounds.height);
     const placed: DOMRect[] = [];
-    root.querySelectorAll<HTMLElement>("[data-label]").forEach((label) => {
+    const labels = [...root.querySelectorAll<HTMLElement>("[data-label]")];
+    labels.sort((a, b) => Number(b.dataset.force === "true") - Number(a.dataset.force === "true"));
+    labels.forEach((label) => {
       const forced = label.dataset.force === "true";
       const r = label.getBoundingClientRect();
       const outside = r.left < bounds.left + 4 || r.right > maxX - 4 || r.top < bounds.top + 56 || r.bottom > maxY - 4;
@@ -310,12 +315,28 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
     }
     engineRef.current = engine;
 
+    let size = { width: 0, height: 0 };
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
+      size = { width, height };
       engine.resize(width, height, window.devicePixelRatio);
       setLayout((prev) => (prev && prev.width === width && prev.height === height ? prev : computeLayout(width, height)));
     });
     ro.observe(host);
+
+    // devicePixelRatio can change without a resize (window dragged to another screen,
+    // OS scaling): re-rasterize at the new density instead of staying blurry.
+    let dprQuery: MediaQueryList | null = null;
+    const onDprChange = () => {
+      engine.resize(size.width, size.height, window.devicePixelRatio);
+      watchDpr();
+    };
+    const watchDpr = () => {
+      dprQuery?.removeEventListener("change", onDprChange);
+      dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      dprQuery.addEventListener("change", onDprChange);
+    };
+    watchDpr();
 
     const sync = () => engine.setActive(visibleRef.current && !document.hidden);
     const io = new IntersectionObserver(([entry]) => {
@@ -328,6 +349,7 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
 
     return () => {
       ro.disconnect();
+      dprQuery?.removeEventListener("change", onDprChange);
       io.disconnect();
       document.removeEventListener("visibilitychange", sync);
       engine.destroy();
@@ -448,14 +470,18 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
     setLocState("locating");
     try {
       const coords = await requestPosition();
-      const fid = await featureIdAt(coords);
+      const fid = await refineForSmallMarkets(
+        coords,
+        await featureIdAt(coords),
+        markets.filter((_, i) => model.marketDots[i] < SMALL_MARKET_DOTS),
+      );
       let country: string | null = null;
       if (fid && !isAbsorbedFeature(fid)) {
         const market = markets.find((m) => m.isoNumeric === fid);
         const fi = field.byId.get(fid);
         country = market?.code ?? (fi !== undefined ? field.features[fi].a2 || null : null);
       } else if (!fid) {
-        // At sea, or a market too small for the 110m atlas (e.g. Singapore): nearest market centre.
+        // At sea, or on a coast too fine for the atlas: nearest market centre.
         let best: MapMarket | null = null;
         let bestKm = 150;
         for (const m of markets) {
@@ -507,6 +533,14 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
   const desktop = layout?.desktop ?? true;
   const activeRegion = focusRegion ? model.regionById.get(focusRegion) : undefined;
   const regionMarkets = focusRegion ? (model.regionMarkets.get(focusRegion) ?? []) : [];
+  // Pin labels in collision priority order (placeOverlays keeps the first of two that
+  // overlap): best status first, then the larger country, so Germany / the UK keep
+  // their labels over Belgium / Ireland in a crowded Europe.
+  const labelMarkets = [...regionMarkets].sort(
+    (a, b) =>
+      MODE_RANK[a.salesMode] - MODE_RANK[b.salesMode] ||
+      (model.marketDots[model.byCode.get(b.code) ?? -1] ?? 0) - (model.marketDots[model.byCode.get(a.code) ?? -1] ?? 0),
+  );
   const selected = selectedCode ? (markets[model.byCode.get(selectedCode) ?? -1] ?? null) : null;
   const hovered = hoverCode ? (markets[model.byCode.get(hoverCode) ?? -1] ?? null) : null;
   const hoveredIndex = hoverCode ? (model.byCode.get(hoverCode) ?? -1) : -1;
@@ -534,236 +568,239 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
           ? t("announce.country", { country: selected.name, status: t(`status.${selected.salesMode}`) })
           : "";
 
+  // reducedMotion="user": panels / hero / chips only fade (no slide) for prefers-reduced-motion.
   return (
-    <section
-      ref={sectionRef}
-      id="explore"
-      aria-label={t("map.label")}
-      className="relative isolate h-[calc(100svh-4rem)] min-h-[600px] scroll-mt-16 overflow-hidden bg-bg lg:min-h-[640px]"
-    >
-      <style>{`@keyframes region-chip-pulse{0%{box-shadow:0 0 0 0 rgb(182 243 107/.55);border-color:rgb(182 243 107/.7)}100%{box-shadow:0 0 0 14px rgb(182 243 107/0)}}`}</style>
-
-      {/* Backdrop: deep greenhouse glow + faint technical grid */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_70%_at_60%_45%,#0d1a14_0%,#08100c_45%,#060a08_80%)]" />
-        <div className="bg-grid absolute inset-0 opacity-40 [mask-image:radial-gradient(ellipse_70%_60%_at_55%_50%,black,transparent)]" />
-        <div className="absolute top-1/3 left-[68%] h-[46vh] w-[46vh] -translate-x-1/2 -translate-y-1/2 rounded-full bg-leaf-400/[0.07] blur-[90px]" />
-      </div>
-
-      {/* Map canvas + pointer layer */}
-      <div
-        ref={hostRef}
-        className="absolute inset-0"
-        onPointerMove={onPointerMove}
-        onPointerLeave={() => setHoverCode(null)}
-        onClick={onMapClick}
+    <MotionConfig reducedMotion="user">
+      <section
+        ref={sectionRef}
+        id="explore"
+        aria-label={t("map.label")}
+        className="relative isolate h-[calc(100svh-4rem)] min-h-[600px] scroll-mt-16 overflow-hidden bg-bg lg:min-h-[640px]"
       >
-        <canvas ref={canvasRef} aria-hidden className="block h-full w-full" />
-      </div>
+        <style>{`@keyframes region-chip-pulse{0%{box-shadow:0 0 0 0 rgb(182 243 107/.55);border-color:rgb(182 243 107/.7)}100%{box-shadow:0 0 0 14px rgb(182 243 107/0)}}`}</style>
 
-      {/* Edge fades so the map melts into the header and the next section */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-bg to-transparent" />
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-bg to-transparent" />
-
-      {/* Pins / labels positioned over the canvas */}
-      <div
-        ref={overlayRef}
-        aria-hidden
-        data-max-x={layout && focusRegion ? layout.focusArea.x + layout.focusArea.w + 16 : undefined}
-        data-max-y={layout && focusRegion && !layout.desktop ? layout.height - layout.sheetHeight : undefined}
-        className="pointer-events-none absolute inset-0 z-10"
-      >
-        {focusRegion &&
-          regionMarkets.map((m) => {
-            const i = model.byCode.get(m.code)!;
-            const [rx, ry] = model.marketRef[i];
-            const isSel = m.code === selectedCode;
-            const isHover = m.code === hoverCode;
-            return (
-              <div key={m.code} data-rx={rx.toFixed(2)} data-ry={ry.toFixed(2)} className="absolute top-0 left-0">
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    goCountry(m.code);
-                  }}
-                  onMouseEnter={() => setHoverCode(m.code)}
-                  onMouseLeave={() => setHoverCode(null)}
-                  className="pointer-events-auto absolute size-7 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full"
-                />
-                <span
-                  data-label
-                  data-force={isSel || isHover ? "true" : "false"}
-                  className={cn(
-                    "absolute top-0 left-3 inline-flex -translate-y-1/2 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap backdrop-blur-md transition-[opacity,background,border-color,color] duration-200",
-                    isSel
-                      ? "border-leaf-200/60 bg-leaf-300 text-bg shadow-[0_0_24px_rgb(182_243_107/0.55)]"
-                      : isHover
-                        ? "border-leaf-300/50 bg-bg/80 text-fg"
-                        : "border-fg/10 bg-bg/60 text-fg/85",
-                  )}
-                >
-                  {!isSel && <StatusDot mode={m.salesMode} className="size-1.5" />}
-                  {m.name}
-                </span>
-              </div>
-            );
-          })}
-
-        {stage.level === "world" && hovered && hoveredIndex >= 0 && (
-          <div data-rx={model.marketRef[hoveredIndex][0].toFixed(2)} data-ry={model.marketRef[hoveredIndex][1].toFixed(2)} className="absolute top-0 left-0">
-            <div className="glass absolute bottom-5 left-0 -translate-x-1/2 rounded-2xl px-3.5 py-2.5 text-left whitespace-nowrap shadow-[0_12px_40px_-12px_rgb(0_0_0/0.8)]">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <StatusDot mode={hovered.salesMode} />
-                {hovered.name}
-              </p>
-              <p className="mt-0.5 text-xs text-muted">
-                {model.regionById.get(hovered.region)?.name} · {t(`statusShort.${hovered.salesMode}`)}
-              </p>
-              <p className="mt-1.5 text-[11px] font-medium text-leaf-300">{t("map.hint")}</p>
-            </div>
-          </div>
-        )}
-
-        {visitorInfo?.point && (
-          <div data-rx={visitorInfo.point[0].toFixed(2)} data-ry={visitorInfo.point[1].toFixed(2)} className="absolute top-0 left-0">
-            <span className="absolute top-2 right-3 rounded-full whitespace-nowrap border border-sky/25 bg-bg/70 backdrop-blur-sm px-1.5 py-px font-mono text-[10px] font-semibold tracking-wider text-sky uppercase">
-              {t("loc.you")}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Stage 1: hero copy */}
-      <AnimatePresence initial={false}>
-        {stage.level === "world" && (
-          <motion.div
-            key="hero"
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="pointer-events-none absolute inset-x-0 top-0 z-20"
-          >
-            <Container className="pt-6 sm:pt-10 lg:pt-10">
-              <div className="relative max-w-[31rem] xl:max-w-[60rem]">
-                <div
-                  aria-hidden
-                  className="absolute -inset-x-20 -inset-y-14 -z-10 bg-[radial-gradient(closest-side,rgb(6_10_8/0.78),rgb(6_10_8/0.42)_62%,transparent)] xl:-inset-x-32"
-                />
-                <p className="eyebrow">{t("hero.eyebrow")}</p>
-                <h1 className="mt-3 text-[2.1rem] leading-[1.06] font-semibold tracking-tight text-balance sm:mt-4 sm:text-5xl lg:text-[2.95rem] xl:text-[3.1rem]">
-                  <span className="block xl:inline">{t("hero.titleLead")}</span>{" "}
-                  <span className="text-gradient block pb-1 xl:inline">{t("hero.titleAccent")}</span>
-                </h1>
-                <p className="mt-3 max-w-[27rem] text-sm leading-relaxed text-muted text-pretty sm:mt-4 sm:text-[15px] xl:max-w-[36rem]">
-                  {t("hero.body")}
-                </p>
-                <div className="pointer-events-auto mt-5 flex flex-wrap items-center gap-2 sm:mt-6 sm:gap-3">
-                  <Button size={desktop ? "lg" : "md"} onClick={focusChips}>
-                    <Globe2 className="size-4" aria-hidden />
-                    {t("hero.cta")}
-                  </Button>
-                  <ButtonLink href="#product" variant="ghost" size={desktop ? "lg" : "md"} className="bg-bg/40 backdrop-blur-sm">
-                    {t("hero.secondary")}
-                    <ArrowDown className="size-4" aria-hidden />
-                  </ButtonLink>
-                </div>
-              </div>
-            </Container>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Location (desktop: top right on the world stage) */}
-      {desktop && stage.level === "world" && (
-        <div className="absolute top-6 right-6 z-20 hidden lg:block">
-          <LocationChip
-            visitor={visitorView}
-            state={locState}
-            precise={visitor?.source === "device"}
-            onExplore={exploreVisitor}
-            onLocate={locate}
-            className="justify-end"
-          />
+        {/* Backdrop: deep greenhouse glow + faint technical grid */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_70%_at_60%_45%,#0d1a14_0%,#08100c_45%,#060a08_80%)]" />
+          <div className="bg-grid absolute inset-0 opacity-40 [mask-image:radial-gradient(ellipse_70%_60%_at_55%_50%,black,transparent)]" />
+          <div className="absolute top-1/3 left-[68%] h-[46vh] w-[46vh] -translate-x-1/2 -translate-y-1/2 rounded-full bg-leaf-400/[0.07] blur-[90px]" />
         </div>
-      )}
 
-      {/* Stage 2/3: breadcrumb */}
-      <AnimatePresence>
-        {stage.level !== "world" && activeRegion && (
-          <motion.nav
-            key="crumbs"
-            aria-label={t("map.breadcrumb")}
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25 }}
-            className="absolute top-4 left-4 z-30 sm:left-6"
-          >
-            <ol className="glass flex h-10 items-center gap-0.5 rounded-full px-1.5 text-sm">
-              <li>
-                <button
-                  type="button"
-                  onClick={goWorld}
-                  className="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-muted transition hover:bg-fg/5 hover:text-fg"
-                >
-                  <Globe2 className="size-3.5" aria-hidden />
-                  {t("map.world")}
-                </button>
-              </li>
-              <li aria-hidden>
-                <ChevronRight className="size-3.5 text-faint" />
-              </li>
-              <li>
-                {stage.level === "country" ? (
+        {/* Map canvas + pointer layer */}
+        <div
+          ref={hostRef}
+          className="absolute inset-0"
+          onPointerMove={onPointerMove}
+          onPointerLeave={() => setHoverCode(null)}
+          onClick={onMapClick}
+        >
+          <canvas ref={canvasRef} aria-hidden className="block h-full w-full" />
+        </div>
+
+        {/* Edge fades so the map melts into the header and the next section */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-bg to-transparent" />
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-bg to-transparent" />
+
+        {/* Pins / labels positioned over the canvas */}
+        <div
+          ref={overlayRef}
+          aria-hidden
+          data-max-x={layout && focusRegion ? layout.focusArea.x + layout.focusArea.w + 16 : undefined}
+          data-max-y={layout && focusRegion && !layout.desktop ? layout.height - layout.sheetHeight : undefined}
+          className="pointer-events-none absolute inset-0 z-10"
+        >
+          {focusRegion &&
+            labelMarkets.map((m) => {
+              const i = model.byCode.get(m.code)!;
+              const [rx, ry] = model.marketRef[i];
+              const isSel = m.code === selectedCode;
+              const isHover = m.code === hoverCode;
+              return (
+                <div key={m.code} data-rx={rx.toFixed(2)} data-ry={ry.toFixed(2)} className="absolute top-0 left-0">
                   <button
                     type="button"
-                    onClick={() => navigate({ level: "region", region: activeRegion.id })}
-                    className="inline-flex h-7 items-center rounded-full px-2.5 text-muted transition hover:bg-fg/5 hover:text-fg"
+                    tabIndex={-1}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goCountry(m.code);
+                    }}
+                    onMouseEnter={() => setHoverCode(m.code)}
+                    onMouseLeave={() => setHoverCode(null)}
+                    className="pointer-events-auto absolute size-7 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full"
+                  />
+                  <span
+                    data-label
+                    data-force={isSel || isHover ? "true" : "false"}
+                    className={cn(
+                      "absolute top-0 left-3 inline-flex -translate-y-1/2 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap backdrop-blur-md transition-[opacity,background,border-color,color] duration-200",
+                      isSel
+                        ? "border-leaf-200/60 bg-leaf-300 text-bg shadow-[0_0_24px_rgb(182_243_107/0.55)]"
+                        : isHover
+                          ? "border-leaf-300/50 bg-bg/80 text-fg"
+                          : "border-fg/10 bg-bg/60 text-fg/85",
+                    )}
                   >
-                    {activeRegion.name}
-                  </button>
-                ) : (
-                  <span aria-current="page" className="inline-flex h-7 items-center px-2.5 font-medium text-fg">
-                    {activeRegion.name}
+                    {!isSel && <StatusDot mode={m.salesMode} className="size-1.5" />}
+                    {m.name}
                   </span>
-                )}
-              </li>
-              {selected && (
-                <>
-                  <li aria-hidden>
-                    <ChevronRight className="size-3.5 text-faint" />
-                  </li>
-                  <li>
-                    <span aria-current="page" className="inline-flex h-7 max-w-[9rem] items-center truncate px-2.5 font-medium text-leaf-200 sm:max-w-none">
-                      {selected.name}
-                    </span>
-                  </li>
-                </>
-              )}
-            </ol>
-            <p className="mt-2 hidden pl-3 font-mono text-[10px] tracking-widest text-faint uppercase lg:block">
-              {t("map.escHint")}
-            </p>
-          </motion.nav>
-        )}
-      </AnimatePresence>
+                </div>
+              );
+            })}
 
-      {/* Stage 1: region chips + legend (+ location on mobile) */}
-      <AnimatePresence initial={false}>
+          {stage.level === "world" && hovered && hoveredIndex >= 0 && (
+            <div data-rx={model.marketRef[hoveredIndex][0].toFixed(2)} data-ry={model.marketRef[hoveredIndex][1].toFixed(2)} className="absolute top-0 left-0">
+              <div className="glass absolute bottom-5 left-0 -translate-x-1/2 rounded-2xl px-3.5 py-2.5 text-left whitespace-nowrap shadow-[0_12px_40px_-12px_rgb(0_0_0/0.8)]">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <StatusDot mode={hovered.salesMode} />
+                  {hovered.name}
+                </p>
+                <p className="mt-0.5 text-xs text-muted">
+                  {model.regionById.get(hovered.region)?.name} · {t(`statusShort.${hovered.salesMode}`)}
+                </p>
+                <p className="mt-1.5 text-[11px] font-medium text-leaf-300">{t("map.hint")}</p>
+              </div>
+            </div>
+          )}
+
+          {visitorInfo?.point && (
+            <div data-rx={visitorInfo.point[0].toFixed(2)} data-ry={visitorInfo.point[1].toFixed(2)} className="absolute top-0 left-0">
+              <span className="absolute top-2 right-3 rounded-full whitespace-nowrap border border-sky/25 bg-bg/70 backdrop-blur-sm px-1.5 py-px font-mono text-[10px] font-semibold tracking-wider text-sky uppercase">
+                {t("loc.you")}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Stage 1: hero copy */}
+        <AnimatePresence initial={false}>
+          {stage.level === "world" && (
+            <motion.div
+              key="hero"
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="pointer-events-none absolute inset-x-0 top-0 z-20"
+            >
+              <Container className="pt-6 sm:pt-10 lg:pt-10">
+                <div className="relative max-w-[31rem] xl:max-w-[60rem]">
+                  <div
+                    aria-hidden
+                    className="absolute -inset-x-20 -inset-y-14 -z-10 bg-[radial-gradient(closest-side,rgb(6_10_8/0.78),rgb(6_10_8/0.42)_62%,transparent)] xl:-inset-x-32"
+                  />
+                  <p className="eyebrow">{t("hero.eyebrow")}</p>
+                  <h1 className="mt-3 text-[2.1rem] leading-[1.06] font-semibold tracking-tight text-balance sm:mt-4 sm:text-5xl lg:text-[2.95rem] xl:text-[3.1rem]">
+                    <span className="block xl:inline">{t("hero.titleLead")}</span>{" "}
+                    <span className="text-gradient block pb-1 xl:inline">{t("hero.titleAccent")}</span>
+                  </h1>
+                  <p className="mt-3 max-w-[27rem] text-sm leading-relaxed text-muted text-pretty sm:mt-4 sm:text-[15px] xl:max-w-[36rem]">
+                    {t("hero.body")}
+                  </p>
+                  <div className="pointer-events-auto mt-5 flex flex-wrap items-center gap-2 sm:mt-6 sm:gap-3">
+                    {/* Sized with CSS breakpoints (not the measured layout) so the server HTML doesn't jump on phones. */}
+                    <Button size="md" className={HERO_BUTTON_LG} onClick={focusChips}>
+                      <Globe2 className="size-4" aria-hidden />
+                      {t("hero.cta")}
+                    </Button>
+                    <ButtonLink href="#product" variant="ghost" size="md" className={cn(HERO_BUTTON_LG, "bg-bg/40 backdrop-blur-sm")}>
+                      {t("hero.secondary")}
+                      <ArrowDown className="size-4" aria-hidden />
+                    </ButtonLink>
+                  </div>
+                </div>
+              </Container>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Location (desktop: top right on the world stage). Both chips are always rendered and
+            switched by CSS, so the server HTML matches the phone layout (no pop-in / shift). */}
         {stage.level === "world" && (
-          <motion.div
-            key="chips"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
-            transition={{ duration: 0.3 }}
-            className="absolute inset-x-0 bottom-0 z-20 pb-4 sm:pb-6"
-          >
-            <Container>
-              {!desktop && (
+          <div className="absolute top-6 right-6 z-20 hidden lg:block">
+            <LocationChip
+              visitor={visitorView}
+              state={locState}
+              precise={visitor?.source === "device"}
+              onExplore={exploreVisitor}
+              onLocate={locate}
+              className="justify-end"
+            />
+          </div>
+        )}
+
+        {/* Stage 2/3: breadcrumb */}
+        <AnimatePresence>
+          {stage.level !== "world" && activeRegion && (
+            <motion.nav
+              key="crumbs"
+              aria-label={t("map.breadcrumb")}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
+              className="absolute top-4 left-4 z-30 sm:left-6"
+            >
+              <ol className="glass flex h-10 items-center gap-0.5 rounded-full px-1.5 text-sm">
+                <li>
+                  <button
+                    type="button"
+                    onClick={goWorld}
+                    className="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-muted transition hover:bg-fg/5 hover:text-fg"
+                  >
+                    <Globe2 className="size-3.5" aria-hidden />
+                    {t("map.world")}
+                  </button>
+                </li>
+                <li aria-hidden>
+                  <ChevronRight className="size-3.5 text-faint" />
+                </li>
+                <li>
+                  {stage.level === "country" ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate({ level: "region", region: activeRegion.id })}
+                      className="inline-flex h-7 items-center rounded-full px-2.5 text-muted transition hover:bg-fg/5 hover:text-fg"
+                    >
+                      {activeRegion.name}
+                    </button>
+                  ) : (
+                    <span aria-current="page" className="inline-flex h-7 items-center px-2.5 font-medium text-fg">
+                      {activeRegion.name}
+                    </span>
+                  )}
+                </li>
+                {selected && (
+                  <>
+                    <li aria-hidden>
+                      <ChevronRight className="size-3.5 text-faint" />
+                    </li>
+                    <li>
+                      <span aria-current="page" className="inline-flex h-7 max-w-[9rem] items-center truncate px-2.5 font-medium text-leaf-200 sm:max-w-none">
+                        {selected.name}
+                      </span>
+                    </li>
+                  </>
+                )}
+              </ol>
+              <p className="mt-2 hidden pl-3 font-mono text-[10px] tracking-widest text-muted uppercase lg:block">
+                {t("map.escHint")}
+              </p>
+            </motion.nav>
+          )}
+        </AnimatePresence>
+
+        {/* Stage 1: region chips + legend (+ location on mobile) */}
+        <AnimatePresence initial={false}>
+          {stage.level === "world" && (
+            <motion.div
+              key="chips"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-x-0 bottom-0 z-20 pb-4 sm:pb-6"
+            >
+              <Container>
                 <LocationChip
                   visitor={visitorView}
                   state={locState}
@@ -773,67 +810,67 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
                   compact
                   className="mb-3 lg:hidden"
                 />
-              )}
-              <div className="lg:mx-auto lg:w-fit">
-                <div className="mb-2.5 flex items-center justify-between gap-4 px-1">
-                  <p id="region-chips-label" className="eyebrow">
-                    {t("map.chooseRegion")}
-                  </p>
-                  <ul aria-label={t("map.legend")} className="hidden items-center gap-4 text-xs text-muted sm:flex">
-                    {(["full", "pot_only", "coming_soon"] as const).map((mode) => (
-                      <li key={mode} className="flex items-center gap-1.5 whitespace-nowrap">
-                        <StatusDot mode={mode} />
-                        {t(`statusShort.${mode}`)}
-                      </li>
-                    ))}
-                  </ul>
+                <div className="lg:mx-auto lg:w-fit">
+                  <div className="mb-2.5 flex items-center justify-between gap-4 px-1">
+                    <p id="region-chips-label" className="eyebrow">
+                      {t("map.chooseRegion")}
+                    </p>
+                    <ul aria-label={t("map.legend")} className="hidden items-center gap-4 text-xs text-muted sm:flex">
+                      {(["full", "pot_only", "coming_soon"] as const).map((mode) => (
+                        <li key={mode} className="flex items-center gap-1.5 whitespace-nowrap">
+                          <StatusDot mode={mode} />
+                          {t(`statusShort.${mode}`)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <RegionChips
+                    key={pulseChips}
+                    regions={regions}
+                    stats={model.regionStats}
+                    activeRegion={hoverRegion}
+                    pulse={pulseChips > 0}
+                    chipRef={chipRef}
+                    onHover={setHoverRegion}
+                    onSelect={goRegion}
+                  />
                 </div>
-                <RegionChips
-                  key={pulseChips}
-                  regions={regions}
-                  stats={model.regionStats}
-                  activeRegion={hoverRegion}
-                  pulse={pulseChips > 0}
-                  chipRef={chipRef}
-                  onHover={setHoverRegion}
-                  onSelect={goRegion}
-                />
-              </div>
-            </Container>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </Container>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Stage 2/3: region panel / country card */}
-      <AnimatePresence>
-        {activeRegion && layout && (
-          <motion.div
-            key="panel"
-            initial={desktop ? { opacity: 0, x: 24 } : { opacity: 0, y: 40 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            exit={desktop ? { opacity: 0, x: 24 } : { opacity: 0, y: 40 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="pointer-events-none absolute inset-0 z-20"
-          >
-            <MapPanel
-              region={activeRegion}
-              markets={regionMarkets}
-              selected={selected}
-              hoverCode={hoverCode}
-              desktop={desktop}
-              sheetHeight={layout.sheetHeight}
-              headingRef={headingRef}
-              onHover={setHoverCode}
-              onSelect={goCountry}
-              onClose={goWorld}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* Stage 2/3: region panel / country card */}
+        <AnimatePresence>
+          {activeRegion && layout && (
+            <motion.div
+              key="panel"
+              initial={desktop ? { opacity: 0, x: 24 } : { opacity: 0, y: 40 }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              exit={desktop ? { opacity: 0, x: 24 } : { opacity: 0, y: 40 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              className="pointer-events-none absolute inset-0 z-20"
+            >
+              <MapPanel
+                region={activeRegion}
+                markets={regionMarkets}
+                selected={selected}
+                hoverCode={hoverCode}
+                desktop={desktop}
+                sheetHeight={layout.sheetHeight}
+                headingRef={headingRef}
+                onHover={setHoverCode}
+                onSelect={goCountry}
+                onClose={goWorld}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      <p className="sr-only" aria-live="polite">
-        {announcement}
-      </p>
-    </section>
+        <p className="sr-only" aria-live="polite">
+          {announcement}
+        </p>
+      </section>
+    </MotionConfig>
   );
 }

@@ -131,7 +131,7 @@ export function MapPanel({
 
         {others.length > 0 && (
           <div className={cn("px-3 pb-4", selected && "border-t border-fg/5 pt-3")}>
-            {selected && <p className="px-3 pt-1 pb-2 text-xs font-medium text-faint">{t("card.more", { region: region.name })}</p>}
+            {selected && <p className="px-3 pt-1 pb-2 text-xs font-medium text-muted">{t("card.more", { region: region.name })}</p>}
             <ul className="space-y-1">
               {others.map((m) => (
                 <li key={m.code}>
@@ -167,7 +167,7 @@ export function MapPanel({
 
       {markets.length > 0 && (
         <div className="flex shrink-0 items-center justify-between gap-3 border-t border-fg/5 px-5 py-3.5 text-xs sm:px-6">
-          <span className="text-faint">{t("panel.notListed")}</span>
+          <span className="text-muted">{t("panel.notListed")}</span>
           <Link href="/partners" className="inline-flex items-center gap-1 font-medium text-leaf-300 hover:text-leaf-200">
             {t("panel.emptyCta")}
             <ArrowRight className="size-3.5" aria-hidden />

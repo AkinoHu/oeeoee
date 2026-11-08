@@ -170,6 +170,21 @@ export default defineMessages({
     "closing.body": "Launching first in mainland China, with the pot available in more countries as local plant partners join.",
     "closing.cta": "Open the map",
     "closing.secondary": "Become a plant partner",
+
+    // Document metadata (root layout)
+    "meta.title": "oeeoee — a living AI companion for your desk",
+    "meta.description":
+      "A smart plant pot with a face: it cares for your plant automatically and keeps you company with an AI character that knows your day.",
+
+    // Error pages (not-found / error / global-error)
+    "errorPage.home": "Back to home",
+    "errorPage.retry": "Try again",
+    "errorPage.reference": "Reference: {id}",
+    "errorPage.notFound.eyebrow": "Error 404",
+    "errorPage.notFound.title": "This page doesn't exist",
+    "errorPage.notFound.body": "The link may be broken, or the page may have moved. Let's get you back on familiar soil.",
+    "errorPage.error.eyebrow": "Unexpected error",
+    "errorPage.error.title": "This page couldn't load",
   },
   zh: {
     "hero.eyebrow": "智能花盆 · AI 伙伴",
@@ -323,6 +338,18 @@ export default defineMessages({
     "closing.body": "率先在中国大陆上市，随着本地植物合作伙伴加入，更多国家和地区也能买到花盆。",
     "closing.cta": "打开地图",
     "closing.secondary": "成为植物合作伙伴",
+
+    "meta.title": "oeeoee — 有生命体征的桌面 AI 伙伴",
+    "meta.description": "一个有脸的智能花盆：自动照料你的植物，再以一个了解你日常的 AI 角色陪伴你。",
+
+    "errorPage.home": "返回首页",
+    "errorPage.retry": "重试",
+    "errorPage.reference": "错误编号：{id}",
+    "errorPage.notFound.eyebrow": "错误 404",
+    "errorPage.notFound.title": "这个页面不存在",
+    "errorPage.notFound.body": "链接可能已失效，或页面已被移走。我们带你回到熟悉的土壤。",
+    "errorPage.error.eyebrow": "意外错误",
+    "errorPage.error.title": "页面加载失败",
   },
   ja: {
     "hero.eyebrow": "スマートプランター · AIコンパニオン",
@@ -478,5 +505,18 @@ export default defineMessages({
     "closing.body": "まずは中国本土でスタート。地域の植物パートナーが増えるにつれ、プランターを購入できる国も広がります。",
     "closing.cta": "地図をひらく",
     "closing.secondary": "植物パートナーになる",
+
+    "meta.title": "oeeoee — デスクに、いのちあるAIパートナーを",
+    "meta.description":
+      "顔のあるスマートプランター。植物を自動でお世話し、あなたの毎日を知るAIキャラクターがそばにいてくれます。",
+
+    "errorPage.home": "ホームに戻る",
+    "errorPage.retry": "もう一度試す",
+    "errorPage.reference": "エラーID：{id}",
+    "errorPage.notFound.eyebrow": "エラー 404",
+    "errorPage.notFound.title": "ページが見つかりません",
+    "errorPage.notFound.body": "リンクが切れているか、ページが移動した可能性があります。なじみのある場所へご案内します。",
+    "errorPage.error.eyebrow": "予期しないエラー",
+    "errorPage.error.title": "ページを読み込めませんでした",
   },
 });

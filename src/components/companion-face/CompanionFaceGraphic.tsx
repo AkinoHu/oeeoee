@@ -1,7 +1,7 @@
 "use client";
 
-import { AnimatePresence, motion, useAnimate, type Transition } from "motion/react";
-import { useEffect, useId, useState } from "react";
+import { AnimatePresence, motion, useAnimate, useInView, type Transition } from "motion/react";
+import { useEffect, useId, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "@/components/plant-art/usePrefersReducedMotion";
 import {
   EYE_L_X,
@@ -253,11 +253,15 @@ export function CompanionFaceGraphic({
   const reduced = usePrefersReducedMotion();
   const live = animated && !reduced;
   const f = FACES[expression] ?? FACES.neutral;
+  // JS-driven loops (blink, glance, talking mouth) only run while the face is on screen.
+  const rootRef = useRef<SVGGElement>(null);
+  const inView = useInView(rootRef);
+  const idle = live && inView;
 
   // Blinking: imperative, so it never re-renders the face.
   const [blinkScope, animateBlink] = useAnimate<SVGGElement>();
   useEffect(() => {
-    if (!live || !f.blink) return;
+    if (!idle || !f.blink) return;
     let i = 0;
     let timer: ReturnType<typeof setTimeout>;
     const loop = () => {
@@ -277,24 +281,26 @@ export function CompanionFaceGraphic({
     };
     loop();
     return () => clearTimeout(timer);
-  }, [live, f.blink, animateBlink, blinkScope]);
+  }, [idle, f.blink, animateBlink, blinkScope]);
 
   // Glances: an occasional look to the side.
   const [lookStep, setLookStep] = useState(0);
   useEffect(() => {
-    if (!live || !f.look) return;
+    if (!idle || !f.look) return;
     const id = setInterval(() => setLookStep((s) => s + 1), 2600);
     return () => clearInterval(id);
-  }, [live, f.look]);
+  }, [idle, f.look]);
   const lookDx = live && f.look ? LOOK_SEQ[lookStep % LOOK_SEQ.length] * 3.2 : 0;
 
   const L = eyeGeo(f.L, "L", EYE_L_X, lookDx, f);
   const R = eyeGeo(f.R, "R", EYE_R_X, lookDx, f);
-  const mouth = mouthD(f.mouth);
+  // Talking loops the mouth; with reduced motion, a static face or off screen it holds an open mouth.
+  const talkLoop = talking && idle;
+  const mouth = talking && !talkLoop ? talkFrames(f.mouth)[1] : mouthD(f.mouth);
   const scale = width / FACE_W;
 
   return (
-    <g transform={`translate(${n(x)} ${n(y)})${scale !== 1 ? ` scale(${n(scale)})` : ""}`}>
+    <g ref={rootRef} transform={`translate(${n(x)} ${n(y)})${scale !== 1 ? ` scale(${n(scale)})` : ""}`}>
       <defs>
         <linearGradient id={`${uid}-eye`} x1={0} y1={18} x2={0} y2={84} gradientUnits="userSpaceOnUse">
           <stop offset={0} stopColor="#f3ffd9" />
@@ -427,8 +433,8 @@ export function CompanionFaceGraphic({
                 {/* mouth */}
                 <motion.path
                   initial={false}
-                  animate={{ d: talking ? talkFrames(f.mouth) : mouth }}
-                  transition={talking ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : SPRING}
+                  animate={{ d: talkLoop ? talkFrames(f.mouth) : mouth }}
+                  transition={talkLoop ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : SPRING}
                   fill="#1d3d12"
                   stroke={LEAF}
                   strokeWidth={4.2}
