@@ -175,4 +175,11 @@ flowchart LR
 | 多语言 | 中 / 英 / 日 | `src/i18n` |
 
 技术栈：Next.js 16 · Prisma 7 + PostgreSQL · Better Auth（谷歌登录）· Stripe · Claude API · Tailwind v4 · 部署 Railway。
-部署步骤见 [`DEPLOY.md`](DEPLOY.md)，任务拆分见 [`TASKS.md`](TASKS.md)。
+部署步骤见 [`DEPLOY.md`](DEPLOY.md)，任务拆分见 [`TASKS.md`](TASKS.md)，固件对接见 [`DEVICE_API.md`](DEVICE_API.md)。
+
+### 验证情况
+
+- 已验证：类型检查、代码规范、178 个单元测试、生产构建；用浏览器走完整条流程（地图选区→国家→花盆页、合作商页、登录、控制台+演示花盆+对话、管理后台、手机宽度中文版），无服务器报错。
+- 需要真实密钥后再验一次：**谷歌登录**（本地用开发者邮箱登录代替）、**Stripe 真实支付**（已用签名的模拟 Webhook 验证订单状态流转）、**Claude 真实对话**（本地走规则兜底回复；请求格式有单元测试覆盖）。
+- 已知限制：表单/设备/对话的限流存在单进程内存里，Railway 扩到多实例前需换 Redis；合作商申请没有邮件通知；用户的订单只按账号关联。
+- 说明：当前 Claude API 版本不再接受 `temperature` 参数，控制台里的"活泼度"滑块改为通过提示词调节语气。

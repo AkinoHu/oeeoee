@@ -5,7 +5,10 @@ parallel without stepping on each other. Every file has exactly one owner.
 Shared contracts (types, component props, schema) are owned by **platform**;
 change them only after coordinating.
 
-## Milestone 1 — Website MVP (this repo)
+## Milestone 1 — Website MVP (this repo) — ✅ merged
+
+All workstreams below are merged and verified together (typecheck, lint, 178 tests,
+production build, browser walkthrough). Open follow-ups are listed in `PLAN.md` §7.
 
 | ID | Workstream | Owner | Owns (files) | Depends on |
 |----|-----------|-------|--------------|-----------|

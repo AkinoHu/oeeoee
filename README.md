@@ -9,6 +9,7 @@ the web platform ("中台") that hosts the companion's brain.
 - Product & business plan: [`docs/PLAN.md`](docs/PLAN.md)
 - Task breakdown: [`docs/TASKS.md`](docs/TASKS.md)
 - Deploying to Railway: [`docs/DEPLOY.md`](docs/DEPLOY.md)
+- Pot ↔ platform device API (for firmware): [`docs/DEVICE_API.md`](docs/DEVICE_API.md)
 
 ## Quick start
 
