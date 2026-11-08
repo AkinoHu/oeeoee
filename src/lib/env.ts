@@ -3,22 +3,49 @@ import "server-only";
 /**
  * Feature flags derived from environment variables. Every integration degrades
  * gracefully when its keys are missing so the site runs locally with only a
- * DATABASE_URL.
+ * DATABASE_URL. Getters, so flags always agree with code that reads
+ * process.env at call time (getStripe(), appUrl(), …).
  */
 export const features = {
-  google: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
-  stripe: Boolean(process.env.STRIPE_SECRET_KEY),
-  anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+  get google() {
+    return Boolean(env("GOOGLE_CLIENT_ID") && env("GOOGLE_CLIENT_SECRET"));
+  },
+  get stripe() {
+    return Boolean(env("STRIPE_SECRET_KEY"));
+  },
+  get anthropic() {
+    return Boolean(env("ANTHROPIC_API_KEY"));
+  },
   /** Email + password login. Only for local development and automated tests. */
-  devPasswordLogin: process.env.AUTH_DEV_PASSWORD_LOGIN === "true",
+  get devPasswordLogin() {
+    return env("AUTH_DEV_PASSWORD_LOGIN") === "true";
+  },
 };
 
+/** A trimmed env var, treating "" as unset (Railway lets you save empty values). */
+function env(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+}
+
+let warnedAboutAppUrl = false;
+
+/**
+ * Public origin of the site, e.g. https://oeeoee.com. Used for auth callbacks,
+ * Stripe redirects and metadata. Set NEXT_PUBLIC_APP_URL in production.
+ */
 export function appUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.BETTER_AUTH_URL ??
-    (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : "http://localhost:3000")
-  ).replace(/\/$/, "");
+  const configured = env("NEXT_PUBLIC_APP_URL") ?? env("BETTER_AUTH_URL");
+  if (configured) return configured.replace(/\/$/, "");
+  const railway = env("RAILWAY_PUBLIC_DOMAIN");
+  if (process.env.NODE_ENV === "production" && !warnedAboutAppUrl) {
+    warnedAboutAppUrl = true;
+    console.warn(
+      `[env] NEXT_PUBLIC_APP_URL is not set; falling back to ${railway ? `https://${railway}` : "http://localhost:3000"}. ` +
+        "Sign-in and checkout redirects only work on that host.",
+    );
+  }
+  return railway ? `https://${railway}` : "http://localhost:3000";
 }
 
 export function adminEmails(): string[] {

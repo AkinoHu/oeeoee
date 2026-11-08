@@ -7,12 +7,15 @@ import { adminEmails } from "@/lib/env";
 
 /** Current session or null. Cached per request. */
 export const getSession = cache(async () => {
-  // Read the request headers before touching auth: this marks the route as
-  // dynamic, so nothing reaches the database (D1 binding) during the build.
+  // Read the request headers first: it marks the route as dynamic, so pages
+  // that show the user are never prerendered at build time.
   const requestHeaders = await headers();
   try {
     return await auth.api.getSession({ headers: requestHeaders });
-  } catch {
+  } catch (error) {
+    // A failed lookup (e.g. the database is down) is treated as signed out so
+    // public pages still render, but it must not disappear silently.
+    console.error("[session] getSession failed", error);
     return null;
   }
 });

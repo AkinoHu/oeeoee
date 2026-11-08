@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import { CartProvider } from "@/components/cart/CartProvider";
 import { I18nProvider } from "@/i18n/client";
 import { getLocale } from "@/i18n/server";
+import { appUrl } from "@/lib/env";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
   },
   description:
     "A smart plant pot with a face: it cares for your plant automatically and keeps you company with an AI character that knows your day.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(appUrl()),
 };
 
 export const viewport: Viewport = {

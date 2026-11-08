@@ -28,8 +28,8 @@ export const getOrCreateCompanion = cache(async function getOrCreateCompanion(us
   try {
     return await prisma.companion.create({ data: { userId } });
   } catch (error) {
-    // On a user's first visit the console layout and page both get here at once;
-    // Prisma upserts aren't atomic, so the request that loses the race re-reads.
+    // Two first-visit requests can race to create it (a plain prisma upsert hit
+    // the unique constraint here in testing), so the loser re-reads instead.
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return prisma.companion.findUniqueOrThrow({ where: { userId } });
     }
