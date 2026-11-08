@@ -1,5 +1,6 @@
 /** Small JSON helpers for the device / companion route handlers. */
 import type { z } from "zod";
+import { clientIp as sharedClientIp } from "@/lib/client-ip";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -42,7 +43,7 @@ export async function parseBody<S extends z.ZodType>(
   return { ok: true, data: parsed.data };
 }
 
+/** Client IP for rate limiting; see src/lib/client-ip.ts for why the first forwarded hop is not used. */
 export function clientIp(request: Request): string {
-  const fwd = request.headers.get("x-forwarded-for");
-  return fwd?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "local";
+  return sharedClientIp(request.headers);
 }
