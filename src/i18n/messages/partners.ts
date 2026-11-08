@@ -358,6 +358,7 @@ export default defineMessages({
     "admin.partner.mailBody": "Hi {name},\n\nThanks for applying to become an oeeoee plant partner in {country}.\n\n",
     "admin.partner.updated": "Status updated.",
     "admin.partner.error": "Couldn't update the status. Please try again.",
+    "admin.partner.conflict": "This application changed in the meantime. Reload and try again.",
 
     // ── Admin: waitlist ──────────────────────────────────
     "admin.waitlist.title": "Waitlist",
@@ -699,6 +700,7 @@ export default defineMessages({
     "admin.partner.mailBody": "{name}，你好：\n\n感谢你申请成为 oeeoee 在{country}的植物合作伙伴。\n\n",
     "admin.partner.updated": "状态已更新。",
     "admin.partner.error": "状态更新失败，请重试。",
+    "admin.partner.conflict": "该申请已被修改，请刷新后重试。",
 
     "admin.waitlist.title": "候补名单",
     "admin.waitlist.subtitle": "等待 oeeoee 在其国家/地区开放的用户。",
@@ -1053,6 +1055,7 @@ export default defineMessages({
     "admin.partner.mailBody": "{name} 様\n\n{country}での oeeoee 植物パートナーにご応募いただき、ありがとうございます。\n\n",
     "admin.partner.updated": "ステータスを更新しました。",
     "admin.partner.error": "ステータスを更新できませんでした。もう一度お試しください。",
+    "admin.partner.conflict": "この応募は他で更新されました。再読み込みしてもう一度お試しください。",
 
     "admin.waitlist.title": "ウェイトリスト",
     "admin.waitlist.subtitle": "自分の国で oeeoee が始まるのを待っている人たち。",

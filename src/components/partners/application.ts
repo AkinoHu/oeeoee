@@ -81,13 +81,16 @@ export const applicationSchema = z.object({
 
 export type ApplicationInput = z.output<typeof applicationSchema>;
 
-/** Reads the known fields from FormData: trims strings and turns blanks into undefined. */
+/**
+ * Reads the known fields from FormData: trims strings and turns blanks into
+ * undefined. Drops NUL characters, which Postgres rejects in text columns.
+ */
 export function readApplicationForm(formData: FormData): ApplicationValues {
   const values: ApplicationValues = {};
   for (const field of APPLICATION_FIELDS) {
     const value = formData.get(field);
     if (typeof value !== "string") continue;
-    const trimmed = value.trim();
+    const trimmed = value.replaceAll("\0", "").trim();
     if (trimmed) values[field] = trimmed;
   }
   return values;

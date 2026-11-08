@@ -48,6 +48,13 @@ describe("readApplicationForm", () => {
     expect(readApplicationForm(fd)).toEqual({ company: "Leafy Co" });
   });
 
+  it("strips NUL characters, which Postgres text columns reject", () => {
+    const fd = new FormData();
+    fd.set("company", "Leafy\u0000 Co");
+    fd.set("message", "\u0000");
+    expect(readApplicationForm(fd)).toEqual({ company: "Leafy Co" });
+  });
+
   it("only reads the declared fields", () => {
     const fd = new FormData();
     for (const f of APPLICATION_FIELDS) fd.set(f, "v");

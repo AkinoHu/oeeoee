@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getT } from "@/i18n/server";
 import { cn } from "@/lib/utils";
 
 /** Mark: a little screen-face with a sprout on top. */
@@ -15,9 +16,10 @@ export function LogoMark({ className }: { className?: string }) {
   );
 }
 
-export function Logo({ className }: { className?: string }) {
+export async function Logo({ className }: { className?: string }) {
+  const t = await getT("common");
   return (
-    <Link href="/" className={cn("group inline-flex items-center gap-2", className)} aria-label="oeeoee home">
+    <Link href="/" className={cn("group inline-flex items-center gap-2", className)} aria-label={t("nav.home")}>
       <LogoMark className="transition-transform group-hover:-rotate-6" />
       <span className="font-mono text-lg font-semibold tracking-tight">oeeoee</span>
     </Link>

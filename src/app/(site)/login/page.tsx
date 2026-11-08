@@ -1,22 +1,27 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { LogoMark } from "@/components/site/Logo";
 import { Card } from "@/components/ui/primitives";
 import { getT } from "@/i18n/server";
-import { features } from "@/lib/env";
+import { devPasswordLoginEnabled } from "@/lib/auth";
+import { appUrl, features } from "@/lib/env";
 import { getUser } from "@/lib/session";
 import { LoginForm } from "./LoginForm";
+import { safeNext } from "./safe-next";
 
-export const metadata: Metadata = { title: "Sign in" };
-
-/** Only allow same-site relative redirects. */
-function safeNext(value: string | string[] | undefined) {
-  const v = Array.isArray(value) ? value[0] : value;
-  return v && v.startsWith("/") && !v.startsWith("//") ? v : "/console";
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT("common");
+  return { title: t("nav.signIn") };
 }
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const next = safeNext((await searchParams).next);
+  // Sign-in only works on the configured origin (OAuth callback, cookies, CSRF
+  // origin check), so send visitors of e.g. *.up.railway.app there first.
+  const canonical = new URL(appUrl());
+  const host = (await headers()).get("host");
+  if (host && host !== canonical.host) redirect(`${canonical.origin}/login?next=${encodeURIComponent(next)}`);
   if (await getUser()) redirect(next);
   const t = await getT("auth");
 
@@ -27,7 +32,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <LogoMark className="mb-6 h-12 w-12" />
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="mt-2 text-sm text-muted">{t("subtitle")}</p>
-        <LoginForm next={next} google={features.google} devLogin={features.devPasswordLogin} />
+        <LoginForm next={next} google={features.google} devLogin={devPasswordLoginEnabled()} />
         <p className="mt-6 text-xs text-faint">{t("chinaNote")}</p>
         <p className="mt-2 text-xs text-faint">{t("terms")}</p>
       </Card>

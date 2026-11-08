@@ -8,7 +8,12 @@ import { getUser, isAdminEmail } from "@/lib/session";
 export async function GET(request: Request) {
   const user = await getUser();
   if (!user) {
-    return Response.redirect(new URL("/login?next=%2Fadmin%2Fwaitlist", request.url), 303);
+    // Relative on purpose: behind Railway's proxy request.url carries the
+    // server's internal host (e.g. localhost:8080), not the public one.
+    return new Response(null, {
+      status: 303,
+      headers: { Location: "/login?next=%2Fadmin%2Fwaitlist", "Cache-Control": "no-store" },
+    });
   }
   if (!isAdminEmail(user.email)) {
     return new Response("Forbidden", { status: 403, headers: { "Cache-Control": "no-store" } });

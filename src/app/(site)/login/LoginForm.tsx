@@ -64,7 +64,8 @@ export function LoginForm({ next, google, devLogin }: { next: string; google: bo
       )}
 
       {devLogin && (
-        <form onSubmit={onDevSubmit} className="space-y-3 rounded-2xl border border-dashed border-line-strong p-4">
+        // method="post": a submit before hydration must not put the password in the URL.
+        <form onSubmit={onDevSubmit} method="post" className="space-y-3 rounded-2xl border border-dashed border-line-strong p-4">
           <p className="text-sm font-medium">{t("dev.title")}</p>
           <div>
             <Label htmlFor="email">{t("dev.email")}</Label>

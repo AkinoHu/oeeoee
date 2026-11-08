@@ -36,11 +36,20 @@ describe("createRateLimiter", () => {
 
 describe("clientIp", () => {
   const h = (init: Record<string, string>) => new Headers(init);
-  it("prefers the first x-forwarded-for entry", () => {
-    expect(clientIp(h({ "x-forwarded-for": "203.0.113.7, 10.0.0.1", "x-real-ip": "10.0.0.2" }))).toBe("203.0.113.7");
+  it("prefers x-real-ip (set by Railway's edge)", () => {
+    expect(clientIp(h({ "x-forwarded-for": "203.0.113.7, 198.51.100.4", "x-real-ip": "198.51.100.4" }))).toBe("198.51.100.4");
   });
-  it("falls back to x-real-ip, then unknown", () => {
-    expect(clientIp(h({ "x-real-ip": "198.51.100.4" }))).toBe("198.51.100.4");
+  it("otherwise uses the last x-forwarded-for hop, then unknown", () => {
+    expect(clientIp(h({ "x-forwarded-for": "198.51.100.4" }))).toBe("198.51.100.4");
+    expect(clientIp(h({ "x-forwarded-for": "203.0.113.7, 198.51.100.4 ," }))).toBe("198.51.100.4");
+    expect(clientIp(h({ "x-forwarded-for": " , " }))).toBe("unknown");
     expect(clientIp(h({}))).toBe("unknown");
+  });
+  it("can't be dodged by rotating a spoofed first x-forwarded-for hop", () => {
+    const limiter = createRateLimiter({ limit: 2, windowMs: 1000 });
+    const results = [1, 2, 3].map((i) =>
+      limiter.hit(clientIp(h({ "x-forwarded-for": `203.0.113.${i}, 198.51.100.4` })), 0).ok,
+    );
+    expect(results).toEqual([true, true, false]);
   });
 });
