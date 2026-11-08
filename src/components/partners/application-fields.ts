@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL } from "@/config/site";
 import type { MessageKey } from "@/i18n/messages";
 
 /**
@@ -6,7 +7,7 @@ import type { MessageKey } from "@/i18n/messages";
  */
 
 /** Inbox for partnership enquiries, shown on the page and in error messages. */
-export const PARTNERS_EMAIL = "partners@oeeoee.com";
+export const PARTNERS_EMAIL = CONTACT_EMAIL;
 
 export const BUSINESS_TYPES = ["nursery", "grower", "florist", "distributor", "other"] as const;
 export type BusinessType = (typeof BUSINESS_TYPES)[number];

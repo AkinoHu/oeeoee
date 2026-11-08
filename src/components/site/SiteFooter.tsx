@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CONTACT_EMAIL } from "@/config/site";
 import { getT } from "@/i18n/server";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 import { Logo } from "./Logo";
@@ -18,7 +19,7 @@ export async function SiteFooter() {
           <Link href="/#product" className="hover:text-fg">{t("nav.product")}</Link>
           <Link href="/partners" className="hover:text-fg">{t("nav.partners")}</Link>
           <Link href="/console" className="hover:text-fg">{t("nav.console")}</Link>
-          <a href="mailto:hello@oeeoee.com" className="hover:text-fg">{t("footer.contact")}</a>
+          <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-fg">{t("footer.contact")}</a>
         </div>
         <LocaleSwitcher />
       </div>
