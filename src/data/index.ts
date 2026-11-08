@@ -7,7 +7,20 @@ import { COUNTRIES } from "./countries";
 import { PLANTS } from "./plants";
 import { POT_FINISHES, POT_MODELS } from "./products";
 import { REGIONS } from "./regions";
-import type { Country, LocalizedText, Plant, PotFinish, PotFinishId, PotModel, PotSize, Region, RegionId } from "./types";
+import { PLANT_IDS } from "./types";
+import type {
+  Country,
+  LocalizedText,
+  Plant,
+  PlantId,
+  PotFinish,
+  PotFinishId,
+  PotModel,
+  PotSize,
+  Region,
+  RegionId,
+  SalesMode,
+} from "./types";
 
 export * from "./types";
 
@@ -39,8 +52,23 @@ export function getCountryByNumeric(isoNumeric: string | number): Country | unde
 export function countriesInRegion(region: RegionId): Country[] {
   return COUNTRIES.filter((c) => c.region === region);
 }
+export function countriesBySalesMode(mode: SalesMode): Country[] {
+  return COUNTRIES.filter((c) => c.salesMode === mode);
+}
+/**
+ * Shipping fee (minor units, country currency) for a cart subtotal: the flat
+ * fee, waived once `freeOver` is reached.
+ */
+export function shippingFee(country: Country, subtotal: number): number {
+  const { flatFee, freeOver } = country.shipping;
+  if (freeOver !== undefined && subtotal >= freeOver) return 0;
+  return flatFee;
+}
 
 // Plants
+export function isPlantId(id: unknown): id is PlantId {
+  return typeof id === "string" && (PLANT_IDS as readonly string[]).includes(id);
+}
 export function listPlants(): Plant[] {
   return PLANTS;
 }
@@ -68,6 +96,10 @@ export function getPotModel(size: PotSize | string): PotModel | undefined {
 }
 export function getPotBySku(sku: string): PotModel | undefined {
   return POT_MODELS.find((p) => p.sku === sku);
+}
+/** Price of a pot in a country's currency (minor units), or null for an unknown size. */
+export function potPrice(country: Country, size: PotSize | string): number | null {
+  return getPotModel(size)?.prices[country.currency] ?? null;
 }
 export function listFinishes(): PotFinish[] {
   return POT_FINISHES;
