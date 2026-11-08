@@ -72,6 +72,8 @@ export interface Country {
   localPlantIds: string[];
   /** Local plant partner programme status. */
   partnerStatus: "live" | "recruiting" | "planned";
+  /** Extra delivery note shown on the store page, e.g. which addresses we ship to. */
+  shippingNote?: LocalizedText;
   shipping: {
     /** Flat shipping fee in minor units. */
     flatFee: number;

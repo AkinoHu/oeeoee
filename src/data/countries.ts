@@ -27,7 +27,13 @@ export const COUNTRIES: Country[] = [
   {
     code: "CN",
     isoNumeric: "156",
-    name: { en: "China (Mainland)", zh: "中国大陆", ja: "中国本土" },
+    name: { en: "China", zh: "中国", ja: "中国" },
+    // The map groups Taiwan, Hong Kong and Macao with China; checkout ships to mainland addresses only for now.
+    shippingNote: {
+      en: "Ships to mainland China addresses for now",
+      zh: "目前仅配送中国大陆地址",
+      ja: "現在は中国本土の住所のみ配送",
+    },
     region: "east-asia",
     salesMode: "full",
     currency: "cny",

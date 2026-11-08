@@ -124,7 +124,8 @@ describe("markets", () => {
 
   it("does not list sub-national areas as separate markets", () => {
     for (const code of ["TW", "HK", "MO"]) expect(getCountry(code)).toBeUndefined();
-    expect(getCountry("CN")?.name).toEqual({ en: "China (Mainland)", zh: "中国大陆", ja: "中国本土" });
+    expect(getCountry("CN")?.name).toEqual({ en: "China", zh: "中国", ja: "中国" });
+    expect(getCountry("CN")?.shippingNote?.zh).toBe("目前仅配送中国大陆地址");
   });
 
   it("uses unique 3-digit isoNumeric ids that exist in world-atlas 50m", () => {

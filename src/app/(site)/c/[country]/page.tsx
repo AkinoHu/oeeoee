@@ -1,4 +1,4 @@
-import { ArrowRight, Bell, ChevronRight, Clock, Coins, Handshake, Package, Sprout, Truck } from "lucide-react";
+import { ArrowRight, Bell, ChevronRight, Clock, Coins, Handshake, MapPin, Package, Sprout, Truck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -67,6 +67,7 @@ export default async function CountryStorePage({ params, searchParams }: PagePro
           },
           { icon: Clock, text: t("shipping.eta", { min: etaDays[0], max: etaDays[1] }) },
           { icon: Coins, text: t("shipping.currency", { currency: country.currency.toUpperCase() }) },
+          ...(country.shippingNote ? [{ icon: MapPin, text: lt(country.shippingNote, locale) }] : []),
         ];
 
   return (

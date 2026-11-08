@@ -19,7 +19,7 @@ import { useLocale, useT } from "@/i18n/client";
 import type { Locale } from "@/i18n/config";
 import { refineGuess, type GeoGuess, type GeoSource } from "@/lib/geo";
 import { cn } from "@/lib/utils";
-import { ABSORBED_FEATURE_IDS, isAbsorbedFeature } from "./compliance";
+import { ABSORBED_FEATURE_IDS, absorbedNear, absorbingMarket } from "./compliance";
 import { getDotField } from "./engine/field";
 import { DOT_CLASS, WorldMapEngine, type Scene } from "./engine/renderer";
 import {
@@ -144,10 +144,12 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
     const featureRegion = field.features.map((f, i) =>
       featureMarket[i] >= 0 ? markets[featureMarket[i]].region : f.region,
     );
-    const absorbedA2 = new Set<string>();
+    // Alpha-2 code of each absorbed territory → the market it belongs to (TW/HK/MO → CN).
+    const absorbedA2 = new Map<string, string>();
     for (const id of ABSORBED_FEATURE_IDS) {
       const f = field.byId.get(id);
-      if (f !== undefined && field.features[f].a2) absorbedA2.add(field.features[f].a2);
+      const owner = absorbingMarket(id);
+      if (f !== undefined && field.features[f].a2 && owner) absorbedA2.set(field.features[f].a2, owner);
     }
     const regionMarkets = new Map<RegionId, MapMarket[]>();
     const regionStats = new Map<RegionId, RegionStat>();
@@ -183,7 +185,7 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
 
   const visitorInfo = useMemo(() => {
     if (!visitor) return null;
-    const code = visitor.country && !model.absorbedA2.has(visitor.country) ? visitor.country : null;
+    const code = visitor.country ? (model.absorbedA2.get(visitor.country) ?? visitor.country) : null;
     if (!code && !visitor.coords) return null;
     const mi = code ? model.byCode.get(code) : undefined;
     const market = mi !== undefined ? markets[mi] : null;
@@ -476,10 +478,16 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
         markets.filter((_, i) => model.marketDots[i] < SMALL_MARKET_DOTS),
       );
       let country: string | null = null;
-      if (fid && !isAbsorbedFeature(fid)) {
+      const owner = fid ? absorbingMarket(fid) : null;
+      if (owner) {
+        country = owner;
+      } else if (fid) {
         const market = markets.find((m) => m.isoNumeric === fid);
         const fi = field.byId.get(fid);
         country = market?.code ?? (fi !== undefined ? field.features[fi].a2 || null : null);
+      } else if (!fid && absorbedNear(coords)) {
+        // A grouped territory too small for the atlas (Macao is not in it at all).
+        country = absorbedNear(coords);
       } else if (!fid) {
         // At sea, or on a coast too fine for the atlas: nearest market centre.
         let best: MapMarket | null = null;
