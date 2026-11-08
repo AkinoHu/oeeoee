@@ -1,11 +1,20 @@
-import { getT } from "@/i18n/server";
+import { headers } from "next/headers";
+import { ProductStory } from "@/components/landing/ProductStory";
+import { buildMapModel } from "@/components/map/model";
+import { WorldExplorer } from "@/components/map/WorldExplorer";
+import { getLocale } from "@/i18n/server";
+import { guessCountryFromHeaders } from "@/lib/geo";
 
-/** Landing page. PLACEHOLDER — implemented by the map agent. */
+/** Landing: the world map hero (#explore) followed by the product story (#product). */
 export default async function HomePage() {
-  const t = await getT("common");
+  const [locale, requestHeaders] = await Promise.all([getLocale(), headers()]);
+  const { regions, markets } = buildMapModel(locale);
+  const guess = guessCountryFromHeaders(requestHeaders);
+
   return (
-    <section className="flex min-h-[70vh] items-center justify-center">
-      <h1 className="text-gradient text-4xl font-semibold">{t("brand.tagline")}</h1>
-    </section>
+    <>
+      <WorldExplorer regions={regions} markets={markets} guess={guess} />
+      <ProductStory />
+    </>
   );
 }
