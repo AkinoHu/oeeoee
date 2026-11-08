@@ -54,6 +54,18 @@ describe("parseCart", () => {
       lines: [potM],
     });
   });
+
+  it("drops carts for markets and lines for products the catalog no longer has", () => {
+    // Market removed from the catalog: nothing to show, so nothing to count.
+    expect(parseCart(JSON.stringify({ countryCode: "ZZ", lines: [potM] }))).toEqual(EMPTY_CART);
+    const stale = [
+      potM,
+      { ...potM, potSku: "POT-XL" },
+      { ...potM, finish: "gold" },
+      { ...potM, plantId: "triffid" },
+    ];
+    expect(parseCart(JSON.stringify({ countryCode: "CN", lines: stale }))).toEqual({ countryCode: "CN", lines: [potM] });
+  });
 });
 
 describe("waitlistRequestSchema", () => {

@@ -32,8 +32,12 @@ export const APPLICATION_FIELDS = [
 ] as const;
 export type ApplicationField = (typeof APPLICATION_FIELDS)[number];
 
-/** Hidden trap field. Humans never see it; naive bots fill every input. */
-export const HONEYPOT_FIELD = "url";
+/**
+ * Hidden trap field. Humans never see it; naive bots fill every input. The name
+ * must not look like a real field ("url", "website", "phone"…), or browser and
+ * password-manager autofill fill it and real applications get dropped.
+ */
+export const HONEYPOT_FIELD = "oe_trap";
 
 type PartnersKey = MessageKey<"partners">;
 

@@ -1,9 +1,23 @@
+import { getCountry, getFinish, getPlant, getPotBySku } from "@/data";
 import { cartLineSchema, cartStateSchema } from "./schema";
 import { EMPTY_CART, MAX_LINES, type CartLine, type CartState } from "./types";
 
 export const CART_STORAGE_KEY = "oeeoee.cart.v1";
 
-/** Parse untrusted JSON (localStorage, another tab) into a valid cart; invalid lines are dropped. */
+/** A saved line still refers to things the catalog sells. */
+function isKnownLine(line: CartLine): boolean {
+  return (
+    Boolean(getPotBySku(line.potSku)) &&
+    Boolean(getFinish(line.finish)) &&
+    (line.plantId === null || Boolean(getPlant(line.plantId)))
+  );
+}
+
+/**
+ * Parse untrusted JSON (localStorage, another tab) into a valid cart. Invalid
+ * lines, and lines or markets the catalog no longer has, are dropped — so the
+ * header badge never counts items the drawer can't show.
+ */
 export function parseCart(raw: string | null | undefined): CartState {
   if (!raw) return EMPTY_CART;
   let data: unknown;
@@ -17,9 +31,9 @@ export function parseCart(raw: string | null | undefined): CartState {
   const lines: CartLine[] = [];
   for (const candidate of parsed.data.lines) {
     const line = cartLineSchema.safeParse(candidate);
-    if (line.success && lines.length < MAX_LINES) lines.push(line.data);
+    if (line.success && isKnownLine(line.data) && lines.length < MAX_LINES) lines.push(line.data);
   }
-  if (!lines.length || !parsed.data.countryCode) return EMPTY_CART;
+  if (!lines.length || !parsed.data.countryCode || !getCountry(parsed.data.countryCode)) return EMPTY_CART;
   return { countryCode: parsed.data.countryCode, lines };
 }
 

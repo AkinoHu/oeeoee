@@ -16,7 +16,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  const next = safeNext((await searchParams).next);
+  const params = await searchParams;
+  const next = safeNext(params.next);
+  const oauthError = typeof params.error === "string" && params.error.length > 0;
   // Sign-in only works on the configured origin (OAuth callback, cookies, CSRF
   // origin check), so send visitors of e.g. *.up.railway.app there first.
   const canonical = new URL(appUrl());
@@ -32,7 +34,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <LogoMark className="mb-6 h-12 w-12" />
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="mt-2 text-sm text-muted">{t("subtitle")}</p>
-        <LoginForm next={next} google={features.google} devLogin={devPasswordLoginEnabled()} />
+        <LoginForm next={next} google={features.google} devLogin={devPasswordLoginEnabled()} oauthError={oauthError} />
         <p className="mt-6 text-xs text-faint">{t("chinaNote")}</p>
         <p className="mt-2 text-xs text-faint">{t("terms")}</p>
       </Card>

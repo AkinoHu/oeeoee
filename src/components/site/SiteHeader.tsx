@@ -4,6 +4,7 @@ import { getT } from "@/i18n/server";
 import { getUser, isAdminEmail } from "@/lib/session";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 import { Logo } from "./Logo";
+import { MobileNav } from "./MobileNav";
 import { UserMenu } from "./UserMenu";
 
 /** Sticky, translucent header shared by all public pages. */
@@ -32,6 +33,7 @@ export async function SiteHeader() {
           <LocaleSwitcher className="hidden sm:inline-flex" />
           <CartButton />
           <UserMenu user={menuUser} />
+          <MobileNav />
         </div>
       </div>
     </header>

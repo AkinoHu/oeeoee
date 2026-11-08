@@ -15,17 +15,33 @@ function GoogleIcon() {
   );
 }
 
-export function LoginForm({ next, google, devLogin }: { next: string; google: boolean; devLogin: boolean }) {
+export function LoginForm({
+  next,
+  google,
+  devLogin,
+  oauthError = false,
+}: {
+  next: string;
+  google: boolean;
+  devLogin: boolean;
+  /** Google sign-in came back with an error (e.g. the user cancelled consent). */
+  oauthError?: boolean;
+}) {
   const t = useT("auth");
   const tc = useT("common");
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(oauthError ? t("googleError") : null);
 
   async function onGoogle() {
     setBusy(true);
     setError(null);
-    const res = await signIn.social({ provider: "google", callbackURL: next });
+    const res = await signIn.social({
+      provider: "google",
+      callbackURL: next,
+      // Cancelled consent / provider errors come back here with ?error=<code>.
+      errorCallbackURL: `/login?next=${encodeURIComponent(next)}`,
+    });
     if (res?.error) {
       setError(res.error.message ?? tc("state.error"));
       setBusy(false);
