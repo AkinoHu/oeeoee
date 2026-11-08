@@ -1,6 +1,6 @@
 import "server-only";
 import { getPlant } from "@/data";
-import type { Device } from "@/generated/prisma/client";
+import { Prisma, type Device } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import {
   assessVitals,
@@ -19,7 +19,18 @@ import { readReminders, type ReminderSettings } from "./settings";
 
 /** The user's companion, created with defaults on first use. */
 export async function getOrCreateCompanion(userId: string) {
-  return prisma.companion.upsert({ where: { userId }, create: { userId }, update: {} });
+  const existing = await prisma.companion.findUnique({ where: { userId } });
+  if (existing) return existing;
+  try {
+    return await prisma.companion.create({ data: { userId } });
+  } catch (error) {
+    // On a user's first visit the console layout and page both get here at once;
+    // Prisma upserts aren't atomic, so the request that loses the race re-reads.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return prisma.companion.findUniqueOrThrow({ where: { userId } });
+    }
+    throw error;
+  }
 }
 
 export type CompanionRecord = Awaited<ReturnType<typeof getOrCreateCompanion>>;
