@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LogoMark } from "@/components/site/Logo";
+import { LogoMark } from "@/components/site/LogoMark";
 
 /**
  * Full-page branded screen for 404 / error states (app/not-found, app/error,
