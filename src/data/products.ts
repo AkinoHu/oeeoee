@@ -1,8 +1,16 @@
 import type { PotFinish, PotModel } from "./types";
 
 /**
- * The smart pot line-up. Prices are placeholders in minor units
- * (CNY/USD/EUR/... cents; JPY/KRW whole units). Owner: catalog agent.
+ * The smart pot line-up. Owner: catalog agent.
+ *
+ * Prices are in minor units (CNY/USD/EUR/… cents; JPY/KRW are zero-decimal,
+ * i.e. whole yen / won). They are anchored on the US price (tax-exclusive) and
+ * converted at rough 2026 FX, then adjusted for how prices are shown locally:
+ *  - EUR/GBP/JPY/KRW/SGD/AUD include VAT/GST, so they sit a bit above a pure
+ *    FX conversion; USD/CAD are shown before sales tax.
+ *  - CNY is priced ~10–15 % below FX parity: made and fulfilled in China.
+ *  - Charm endings per market: x9 / x99 for most, ¥x,800 in Japan, ₩x9,000 in Korea.
+ * Free-shipping thresholds in countries.ts equal the M price per currency.
  */
 export const POT_MODELS: PotModel[] = [
   {
@@ -17,7 +25,7 @@ export const POT_MODELS: PotModel[] = [
     dims: { diameterCm: 12, heightCm: 24 },
     reservoirMl: 600,
     screenInch: 1.8,
-    prices: { cny: 69900, usd: 9900, jpy: 14800, eur: 9900, gbp: 8900, krw: 139000, sgd: 13900, aud: 15900, cad: 13900 },
+    prices: { cny: 69900, usd: 9900, jpy: 15800, eur: 10900, gbp: 8900, krw: 149000, sgd: 14900, aud: 16900, cad: 13900 },
   },
   {
     size: "M",
@@ -31,7 +39,7 @@ export const POT_MODELS: PotModel[] = [
     dims: { diameterCm: 16, heightCm: 30 },
     reservoirMl: 1200,
     screenInch: 2.4,
-    prices: { cny: 99900, usd: 14900, jpy: 21800, eur: 14900, gbp: 12900, krw: 199000, sgd: 19900, aud: 22900, cad: 19900 },
+    prices: { cny: 99900, usd: 14900, jpy: 23800, eur: 15900, gbp: 13900, krw: 219000, sgd: 21900, aud: 24900, cad: 19900 },
   },
   {
     size: "L",
@@ -45,7 +53,7 @@ export const POT_MODELS: PotModel[] = [
     dims: { diameterCm: 24, heightCm: 42 },
     reservoirMl: 2500,
     screenInch: 3.5,
-    prices: { cny: 149900, usd: 21900, jpy: 32800, eur: 21900, gbp: 18900, krw: 299000, sgd: 29900, aud: 33900, cad: 29900 },
+    prices: { cny: 149900, usd: 21900, jpy: 34800, eur: 23900, gbp: 19900, krw: 329000, sgd: 31900, aud: 36900, cad: 29900 },
   },
 ];
 
