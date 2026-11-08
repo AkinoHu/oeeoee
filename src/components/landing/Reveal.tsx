@@ -5,6 +5,8 @@ import { motion, MotionConfig } from "motion/react";
 /**
  * Fades + lifts its children in when scrolled into view (once).
  * With reduced motion the lift is dropped and only the fade remains.
+ * The server HTML starts hidden (opacity 0), so `data-reveal` lets
+ * globals.css show it when scripting is off (no JS, crawlers, reader modes).
  */
 export function Reveal({
   children,
@@ -23,6 +25,7 @@ export function Reveal({
   return (
     <MotionConfig reducedMotion="user">
       <Tag
+        data-reveal=""
         className={className}
         initial={{ opacity: 0, y }}
         whileInView={{ opacity: 1, y: 0 }}

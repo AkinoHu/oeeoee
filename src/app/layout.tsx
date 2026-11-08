@@ -3,19 +3,25 @@ import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import { CartProvider } from "@/components/cart/CartProvider";
 import { I18nProvider } from "@/i18n/client";
-import { getLocale } from "@/i18n/server";
+import { getLocale, translator } from "@/i18n/server";
 import { appUrl } from "@/lib/env";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: {
-    default: "oeeoee — a living AI companion for your desk",
-    template: "%s · oeeoee",
-  },
-  description:
-    "A smart plant pot with a face: it cares for your plant automatically and keeps you company with an AI character that knows your day.",
-  metadataBase: new URL(appUrl()),
-};
+const OG_LOCALE = { en: "en_US", zh: "zh_CN", ja: "ja_JP" } as const;
+
+/** Site-wide defaults in the visitor's language; pages override the title via the template. */
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = translator("landing", locale);
+  return {
+    title: { default: t("meta.title"), template: "%s · oeeoee" },
+    description: t("meta.description"),
+    metadataBase: new URL(appUrl()),
+    applicationName: "oeeoee",
+    openGraph: { type: "website", siteName: "oeeoee", locale: OG_LOCALE[locale] },
+    twitter: { card: "summary" },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#060a08",
