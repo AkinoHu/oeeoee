@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cartCount, cartReducer, isCountryConflict } from "./reducer";
-import { checkoutRequestSchema } from "./schema";
+import { checkoutRequestSchema, waitlistRequestSchema } from "./schema";
 import { parseCart } from "./storage";
 import { EMPTY_CART, MAX_LINE_QTY, MAX_LINES, lineKey, type CartLine } from "./types";
 
@@ -53,6 +53,15 @@ describe("parseCart", () => {
       countryCode: "CN",
       lines: [potM],
     });
+  });
+});
+
+describe("waitlistRequestSchema", () => {
+  it("trims and lower-cases the email before validating it", () => {
+    const ok = waitlistRequestSchema.safeParse({ email: "  Ann@Example.COM ", countryCode: "my" });
+    expect(ok.success && ok.data).toMatchObject({ email: "ann@example.com", countryCode: "MY" });
+    expect(waitlistRequestSchema.safeParse({ email: "not-an-email", countryCode: "MY" }).success).toBe(false);
+    expect(waitlistRequestSchema.safeParse({ email: `${"a".repeat(250)}@x.co`, countryCode: "MY" }).success).toBe(false);
   });
 });
 

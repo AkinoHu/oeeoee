@@ -210,6 +210,11 @@ export interface CheckoutSessionLike {
   collected_information?: {
     shipping_details?: { name?: string | null; address?: unknown } | null;
   } | null;
+  /**
+   * Where shipping lived before Stripe API 2025-03-31.basil. Webhook payloads use the
+   * endpoint's / account's API version, not the SDK's, so older accounts still send this.
+   */
+  shipping_details?: { name?: string | null; address?: unknown } | null;
 }
 
 /** Order id we attached to the session (metadata first, client_reference_id as fallback). */
@@ -219,7 +224,7 @@ export function orderIdFromSession(session: CheckoutSessionLike): string | null 
 
 /** Fields written to the Order once a session is paid. */
 export function paidOrderUpdate(session: CheckoutSessionLike, paidAt: Date = new Date()) {
-  const shipping = session.collected_information?.shipping_details ?? null;
+  const shipping = session.collected_information?.shipping_details ?? session.shipping_details ?? null;
   const pi = session.payment_intent;
   return {
     status: "PAID" as const,

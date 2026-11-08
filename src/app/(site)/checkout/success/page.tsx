@@ -66,8 +66,12 @@ function addressLines(json: unknown, locale: Locale): string[] {
   );
 }
 
+function isSessionId(v: string | undefined): v is string {
+  return !!v && /^cs_[A-Za-z0-9_]+$/.test(v);
+}
+
 async function loadOrder(sessionId: string | undefined, userId: string | undefined) {
-  if (!sessionId || !userId || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return null;
+  if (!isSessionId(sessionId) || !userId) return null;
   const find = () => prisma.order.findUnique({ where: { stripeSessionId: sessionId }, include: { items: true } });
   let order = await find().catch(() => null);
   if (!order || order.userId !== userId) return null;
@@ -94,7 +98,8 @@ export default async function CheckoutSuccessPage({ searchParams }: PageProps<"/
   if (!order) {
     return (
       <section className="flex min-h-[60vh] items-center justify-center px-4 py-16">
-        <ClearCartOnMount />
+        {/* Back from Stripe but signed out (or the order is someone else's): still a finished checkout. */}
+        {isSessionId(sessionId) && <ClearCartOnMount checkoutId={sessionId} />}
         <Card className="w-full max-w-md p-8 text-center">
           <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-leaf-300 text-bg shadow-glow">
             <Check className="h-7 w-7" aria-hidden />
@@ -136,7 +141,8 @@ export default async function CheckoutSuccessPage({ searchParams }: PageProps<"/
 
   return (
     <section className="relative overflow-hidden">
-      <ClearCartOnMount />
+      {/* A canceled checkout charged nothing ("start a new checkout anytime"): keep the cart. */}
+      {!canceled && <ClearCartOnMount checkoutId={order.stripeSessionId ?? order.id} />}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_50%_60%_at_50%_0%,rgb(155_227_74/0.16),transparent_70%)]" />
       <Container className="relative max-w-5xl py-12 sm:py-16">
         <div className="text-center">

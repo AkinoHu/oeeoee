@@ -45,13 +45,17 @@ export function suggestedSize(plant: Plant, placement: Placement): PotSize {
   return prefs.find((s) => plant.sizes.includes(s)) ?? plant.sizes[0] ?? "M";
 }
 
-/** Resolve the studio from (untrusted) query params, falling back to the top recommendation. */
+/**
+ * Resolve the studio from (untrusted) query params, falling back to the top recommendation.
+ * Any catalog plant is accepted: the quiz can suggest one from outside the market's list
+ * (e.g. pet-safe top-ups), and shared links / Stripe's cancel_url must bring it back.
+ */
 export function resolveStudio(
   country: Country,
   query: { size?: string | null; finish?: string | null; plant?: string | null },
 ): StudioState {
   const plants = studioPlants(country);
-  const fromQuery = query.plant ? plants.find((p) => p.id === query.plant) : undefined;
+  const fromQuery = query.plant ? (plants.find((p) => p.id === query.plant) ?? getPlant(query.plant)) : undefined;
   const plant = fromQuery ?? plants[0] ?? getPlant("pothos") ?? listPlants()[0];
   const size = isPotSize(query.size) ? query.size : nearestFittingSize(plant, "M");
   const finish = (query.finish && getFinish(query.finish)?.id) || listFinishes()[0]?.id || DEFAULT_FINISH;
