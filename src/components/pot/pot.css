@@ -1,0 +1,98 @@
+.oe-pot-root {
+  container-type: inline-size;
+  aspect-ratio: 3 / 4;
+}
+
+.oe-pot-wave {
+  animation: oe-pot-wave 3.2s linear infinite;
+}
+
+.oe-pot-bubble {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: oe-pot-bubble 4.6s ease-in infinite;
+}
+
+.oe-pot-status-pulse {
+  animation: oe-pot-pulse 3.6s ease-in-out infinite;
+}
+
+@keyframes oe-pot-wave {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--wave, -12px));
+  }
+}
+
+@keyframes oe-pot-bubble {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.8;
+  }
+  85% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(var(--rise, -30px)) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes oe-pot-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Callout labels — sized from the container so they read at 240–640px. */
+.oe-pot-label {
+  position: absolute;
+  transform: translateY(-50%);
+  max-width: 24%;
+  line-height: 1.15;
+  pointer-events: none;
+}
+
+.oe-pot-label-left {
+  text-align: right;
+}
+
+.oe-pot-label-title {
+  display: block;
+  font-size: clamp(9px, 3.3cqw, 13px);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--color-fg);
+  text-shadow: 0 1px 8px rgb(6 10 8 / 0.9);
+}
+
+.oe-pot-label-desc {
+  display: none;
+  margin-top: 0.15em;
+  font-size: clamp(8px, 2.3cqw, 11px);
+  color: var(--color-muted);
+  text-shadow: 0 1px 8px rgb(6 10 8 / 0.9);
+}
+
+@container (min-width: 420px) {
+  .oe-pot-label-desc {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oe-pot-wave,
+  .oe-pot-bubble,
+  .oe-pot-status-pulse {
+    animation: none !important;
+  }
+}

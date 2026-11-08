@@ -14,4 +14,11 @@ export interface PotPreviewProps {
   /** Show small callout labels (camera, light, sensors, screen, reservoir). */
   annotated?: boolean;
   className?: string;
+  /** Animate the face's mouth as if speaking. Default false. */
+  talking?: boolean;
+  /**
+   * Idle life (plant sway, face blinking, ring motion, water ripple). Default true.
+   * Set false for static thumbnails. Always off for prefers-reduced-motion.
+   */
+  animated?: boolean;
 }

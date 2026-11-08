@@ -1,25 +1,31 @@
 "use client";
 
+import { useT } from "@/i18n/client";
+import { cn } from "@/lib/utils";
+import { CompanionFaceGraphic } from "./CompanionFaceGraphic";
+import { FACE_H, FACE_W } from "./expressions";
 import type { CompanionFaceProps } from "./types";
 
+export { CompanionFaceGraphic, type CompanionFaceGraphicProps } from "./CompanionFaceGraphic";
+
 /**
- * The companion's animated face (the pot's screen).
- * STUB — implemented by the pot-art agent. Keep the props contract stable.
+ * The companion's animated face (the pot's screen): a dark rounded screen with
+ * glowing leaf-green eyes. Expressions morph smoothly; it blinks, glances and
+ * breathes on its own, and `talking` animates the mouth.
  */
-export function CompanionFace({ expression = "neutral", size = 160, className }: CompanionFaceProps) {
+export function CompanionFace({ expression = "neutral", talking = false, size = 160, className }: CompanionFaceProps) {
+  const t = useT("pot");
   return (
-    <div
-      className={className}
-      style={{ width: size, height: size * 0.75 }}
+    <svg
+      viewBox={`0 0 ${FACE_W} ${FACE_H}`}
+      width={size}
+      height={Math.round((size * FACE_H) / FACE_W)}
+      className={cn("block select-none", className)}
+      role="img"
+      aria-label={t("aria.face", { expression: t(`expression.${expression}`) })}
       data-expression={expression}
-      aria-label={`companion: ${expression}`}
     >
-      <svg viewBox="0 0 160 120" width="100%" height="100%">
-        <rect x="0" y="0" width="160" height="120" rx="24" fill="#0b1210" />
-        <circle cx="55" cy="55" r="10" fill="#b6f36b" />
-        <circle cx="105" cy="55" r="10" fill="#b6f36b" />
-        <path d="M60 82 Q80 96 100 82" stroke="#b6f36b" strokeWidth="5" fill="none" strokeLinecap="round" />
-      </svg>
-    </div>
+      <CompanionFaceGraphic expression={expression} talking={talking} />
+    </svg>
   );
 }

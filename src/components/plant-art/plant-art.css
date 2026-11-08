@@ -1,0 +1,60 @@
+/*
+ * Idle motion for plant illustrations. Every animated group is drawn with its
+ * pivot (stem base / petiole) at its local origin, so `transform-origin: 0 0`
+ * in view-box mode rotates around the base.
+ */
+
+.oe-plant-sway,
+.oe-plant-flutter,
+.oe-plant-bob {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.oe-plant-sway {
+  animation-name: oe-plant-sway;
+  animation-duration: var(--dur, 7s);
+  animation-delay: var(--delay, 0s);
+}
+
+.oe-plant-flutter {
+  animation-name: oe-plant-sway;
+  animation-duration: var(--dur, 5s);
+  animation-delay: var(--delay, 0s);
+}
+
+.oe-plant-bob {
+  animation-name: oe-plant-bob;
+  animation-duration: var(--dur, 6s);
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes oe-plant-sway {
+  0%,
+  100% {
+    transform: rotate(calc(var(--amp, 1deg) * -1));
+  }
+  50% {
+    transform: rotate(var(--amp, 1deg));
+  }
+}
+
+@keyframes oe-plant-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(calc(var(--amp, 1deg) * -1));
+  }
+  50% {
+    transform: translateY(var(--lift, -1px)) rotate(var(--amp, 1deg));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oe-plant-sway,
+  .oe-plant-flutter,
+  .oe-plant-bob {
+    animation-name: none !important;
+  }
+}
