@@ -133,7 +133,7 @@ export interface Plant {
   difficulty: 1 | 2 | 3;
   petSafe: boolean;
   airPurifying: boolean;
-  /** CAM plants release O₂ at night — good bedside companions. */
+  /** CAM plant: opens its stomata and takes in CO₂ at night — a nice bedside companion. */
   nightOxygen: boolean;
   growth: "slow" | "medium" | "fast";
   /** Climates where the plant is common / easy to source and grow. */
