@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { markOrderCanceled, markOrderPaid, type SyncResult } from "@/lib/cart/sync";
-import { getStripe } from "@/lib/stripe";
+import { getStripe, stripeCryptoProvider } from "@/lib/stripe";
 
 /**
  * POST /api/stripe/webhook — configure these events on the endpoint:
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const payload = await req.text();
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(payload, signature, secret);
+    event = await stripe.webhooks.constructEventAsync(payload, signature, secret, undefined, stripeCryptoProvider);
   } catch {
     return Response.json({ error: "invalid_signature" }, { status: 400 });
   }

@@ -1,15 +1,25 @@
 import "server-only";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { PrismaD1 } from "@prisma/adapter-d1";
 import { PrismaClient } from "@/generated/prisma/client";
+import { lazyObject } from "@/lib/lazy";
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const clients = new WeakMap<D1Database, PrismaClient>();
 
-function createClient() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-  return new PrismaClient({ adapter });
+/** Prisma client bound to this request's Cloudflare D1 binding (`DB` in wrangler.jsonc). */
+export function getPrisma(): PrismaClient {
+  const { env } = getCloudflareContext();
+  let client = clients.get(env.DB);
+  if (!client) {
+    client = new PrismaClient({ adapter: new PrismaD1(env.DB) });
+    clients.set(env.DB, client);
+  }
+  return client;
 }
 
-/** Single shared Prisma client (reused across hot reloads in dev). */
-export const prisma = globalForPrisma.prisma ?? createClient();
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+/**
+ * Shared Prisma client. Bindings only exist inside a request on Workers, so
+ * this resolves the D1 binding lazily on each property access; call sites use
+ * it exactly like a normal PrismaClient.
+ */
+export const prisma = lazyObject(getPrisma);

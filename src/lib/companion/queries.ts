@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { getPlant } from "@/data";
 import { Prisma, type Device } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
@@ -17,8 +18,11 @@ import {
 import { bucketize } from "./series";
 import { readReminders, type ReminderSettings } from "./settings";
 
-/** The user's companion, created with defaults on first use. */
-export async function getOrCreateCompanion(userId: string) {
+/**
+ * The user's companion, created with defaults on first use. Wrapped in React
+ * `cache` so the console layout and page share one lookup per request.
+ */
+export const getOrCreateCompanion = cache(async function getOrCreateCompanion(userId: string) {
   const existing = await prisma.companion.findUnique({ where: { userId } });
   if (existing) return existing;
   try {
@@ -31,7 +35,7 @@ export async function getOrCreateCompanion(userId: string) {
     }
     throw error;
   }
-}
+});
 
 export type CompanionRecord = Awaited<ReturnType<typeof getOrCreateCompanion>>;
 

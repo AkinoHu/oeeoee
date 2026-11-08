@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "oeeoee",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    // Self-reference used by OpenNext for caching/revalidation.
+    { "binding": "WORKER_SELF_REFERENCE", "service": "oeeoee" }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "oeeoee",
+      // Filled in by `wrangler d1 create oeeoee` (see docs/DEPLOY.md).
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Production domain. Requires the oeeoee.com zone in the same Cloudflare account.
+  "routes": [{ "pattern": "oeeoee.com", "custom_domain": true }],
+  "vars": {
+    "NEXT_PUBLIC_APP_URL": "https://oeeoee.com",
+    "BETTER_AUTH_URL": "https://oeeoee.com"
+  },
+  "observability": { "enabled": true }
+  // Secrets (set with `wrangler secret put`): BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID,
+  // GOOGLE_CLIENT_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, ANTHROPIC_API_KEY, ADMIN_EMAILS
+}

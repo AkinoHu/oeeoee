@@ -13,6 +13,17 @@ import { cn } from "@/lib/utils";
 import { MetricIcon, SeverityIcon } from "./MetricIcon";
 import type { TileText } from "./vitals-text";
 
+/** Shape of POST /api/companion/chat responses the playground relies on. */
+interface ChatApiResponse {
+  ok?: boolean;
+  error?: string;
+  messageId?: string;
+  reply: string;
+  expression?: string;
+  fallback?: boolean;
+  memory?: { content: string } | null;
+}
+
 export interface ChatItem {
   id: string;
   role: "user" | "assistant";
@@ -109,7 +120,7 @@ export function Playground({
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as ChatApiResponse;
       if (!res.ok || !data.ok) throw new Error(data.error ?? "request_failed");
       const id: string = data.messageId ?? localId("a");
       const expr: Expression = isExpression(data.expression) ? data.expression : "neutral";

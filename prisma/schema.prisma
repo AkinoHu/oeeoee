@@ -5,10 +5,14 @@
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+  // Cloudflare Workers build of the client (query compiler as WASM).
+  runtime  = "cloudflare"
 }
 
+// Cloudflare D1 (SQLite). Migrations live in /migrations and are applied with
+// wrangler (see docs/DEPLOY.md), not `prisma migrate`.
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -151,9 +155,9 @@ model PartnerApplication {
   city            String?
   website         String?
   businessType    String // "nursery" | "grower" | "florist" | "distributor" | "other"
-  speciesNotes    String?       @db.Text
+  speciesNotes    String?      
   monthlyCapacity String?
-  message         String?       @db.Text
+  message         String?      
   status          PartnerStatus @default(NEW)
   createdAt       DateTime      @default(now())
 
@@ -215,7 +219,7 @@ model Companion {
   userId      String        @unique
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String        @default("Sprout")
-  persona     String        @default("") @db.Text // extra personality instructions
+  persona     String        @default("") // extra personality instructions
   language    String        @default("auto") // "auto" | "en" | "zh" | "ja"
   voice       String        @default("warm") // TTS voice preset id
   model       String        @default("claude-haiku-5-5")
@@ -241,7 +245,7 @@ model Memory {
   companionId String
   companion   Companion  @relation(fields: [companionId], references: [id], onDelete: Cascade)
   kind        MemoryKind @default(FACT)
-  content     String     @db.Text
+  content     String    
   importance  Int        @default(3) // 1 (trivia) – 5 (core)
   source      String     @default("user") // "user" | "auto"
   createdAt   DateTime   @default(now())
@@ -255,7 +259,7 @@ model ChatMessage {
   companionId String
   companion   Companion @relation(fields: [companionId], references: [id], onDelete: Cascade)
   role        String // "user" | "assistant"
-  content     String    @db.Text
+  content     String   
   expression  String? // face expression the assistant chose
   channel     String    @default("web") // "web" | "device" | "desktop" | "mobile"
   deviceId    String?

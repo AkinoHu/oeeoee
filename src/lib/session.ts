@@ -7,8 +7,11 @@ import { adminEmails } from "@/lib/env";
 
 /** Current session or null. Cached per request. */
 export const getSession = cache(async () => {
+  // Read the request headers before touching auth: this marks the route as
+  // dynamic, so nothing reaches the database (D1 binding) during the build.
+  const requestHeaders = await headers();
   try {
-    return await auth.api.getSession({ headers: await headers() });
+    return await auth.api.getSession({ headers: requestHeaders });
   } catch {
     return null;
   }
