@@ -1,3 +1,4 @@
+import { seriesRuns } from "@/lib/companion/series";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,7 +18,7 @@ export function Sparkline({
   className?: string;
 }) {
   const nums = values.filter((v): v is number => v !== null);
-  if (nums.length < 2) return <div className={cn("h-8", className)} aria-hidden />;
+  if (nums.length === 0 || values.length < 2) return <div className={cn("h-8", className)} aria-hidden />;
 
   let lo = Math.min(...nums);
   let hi = Math.max(...nums);
@@ -34,15 +35,11 @@ export function Sparkline({
   const x = (i: number) => (i / (values.length - 1)) * 100;
   const y = (v: number) => 92 - ((v - lo) / (hi - lo)) * 84;
 
-  const segments: string[] = [];
-  let current: string[] = [];
-  values.forEach((v, i) => {
-    if (v === null) {
-      if (current.length > 1) segments.push(current.join(" "));
-      current = [];
-    } else current.push(`${x(i).toFixed(2)},${y(v).toFixed(2)}`);
-  });
-  if (current.length > 1) segments.push(current.join(" "));
+  const pt = (i: number) => `${x(i).toFixed(2)},${y(values[i]!).toFixed(2)}`;
+  const runs = seriesRuns(values);
+  const segments = runs.filter((run) => run.length > 1).map((run) => run.map(pt).join(" "));
+  // Lone points (no neighbour to join) are drawn as zero-length lines: round caps make them dots.
+  const dots = runs.filter((run) => run.length === 1).map(([i]) => `${pt(i)} ${pt(i)}`);
 
   let lastIdx = values.length - 1;
   while (lastIdx >= 0 && values[lastIdx] === null) lastIdx--;
@@ -65,6 +62,9 @@ export function Sparkline({
             strokeLinejoin="round"
             vectorEffect="non-scaling-stroke"
           />
+        ))}
+        {dots.map((pts, i) => (
+          <polyline key={`d${i}`} points={pts} fill="none" stroke="var(--color-muted)" strokeWidth={3} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         ))}
       </svg>
       <span

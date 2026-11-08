@@ -9,7 +9,7 @@ import {
   telemetryReadings,
   webChatSchema,
 } from "./schemas";
-import { readReminders, DEFAULT_REMINDERS } from "./settings";
+import { readReminders, DEFAULT_REMINDERS, timezoneWasSet } from "./settings";
 
 describe("telemetry body", () => {
   it("accepts a single reading with metadata", () => {
@@ -134,5 +134,13 @@ describe("reminder settings", () => {
       timezone: "Asia/Shanghai",
     });
     expect(readReminders([1, 2]).hydrationMinutes).toBe(90);
+  });
+
+  it("tells a never-set time zone from one the user cleared", () => {
+    // Only a never-set zone may be auto-filled from the browser or the pot.
+    expect(timezoneWasSet(null)).toBe(false);
+    expect(timezoneWasSet({ sedentaryMinutes: 30 })).toBe(false);
+    expect(timezoneWasSet({ ...DEFAULT_REMINDERS, timezone: null })).toBe(true);
+    expect(timezoneWasSet({ timezone: "Asia/Tokyo" })).toBe(true);
   });
 });

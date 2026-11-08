@@ -2,8 +2,9 @@ import { authenticateDevice } from "@/lib/companion/device-auth";
 import { json, parseBody } from "@/lib/companion/http";
 import { companionClock, getOrCreateCompanion, potState } from "@/lib/companion/queries";
 import { telemetryBodySchema, telemetryReadings } from "@/lib/companion/schemas";
-import { readReminders, TELEMETRY_INTERVAL_SECONDS } from "@/lib/companion/settings";
+import { readReminders, TELEMETRY_INTERVAL_SECONDS, timezoneWasSet } from "@/lib/companion/settings";
 import { prisma } from "@/lib/db";
+import { SOAK_MINUTES } from "@/lib/vitals";
 
 const MAX_FUTURE_MS = 5 * 60_000;
 const MAX_AGE_MS = 30 * 24 * 3600_000;
@@ -47,8 +48,9 @@ export async function POST(request: Request) {
     ];
   });
 
-  await prisma.$transaction([
-    prisma.telemetry.createMany({ data: rows }),
+  // A retried upload re-sends readings already stored (same pot, same instant): skip them.
+  const [inserted] = await prisma.$transaction([
+    prisma.telemetry.createMany({ data: rows, skipDuplicates: true }),
     prisma.device.update({
       where: { id: device.id },
       data: { lastSeenAt: now, ...(body.data.firmwareVersion ? { firmwareVersion: body.data.firmwareVersion } : {}) },
@@ -56,8 +58,8 @@ export async function POST(request: Request) {
   ]);
 
   const companion = await getOrCreateCompanion(device.userId);
-  // Learn the owner's time zone from the pot if it was never set.
-  if (body.data.timezone && !readReminders(companion.reminders).timezone) {
+  // Learn the owner's time zone from the pot if it was never set (not if they cleared it).
+  if (body.data.timezone && !timezoneWasSet(companion.reminders)) {
     await prisma.companion.update({
       where: { id: companion.id },
       data: { reminders: { ...readReminders(companion.reminders), timezone: body.data.timezone } },
@@ -66,11 +68,26 @@ export async function POST(request: Request) {
   const clock = companionClock(companion, body.data.timezone);
   const state = await potState(device, now, clock.vitalsOptions);
 
+  let actions = state.actions;
+  if (actions.pumpSeconds > 0) {
+    // Hand out at most one dose per soak interval, even to concurrent or
+    // retried requests: claim it with a conditional update.
+    const claimed = await prisma.device.updateMany({
+      where: {
+        id: device.id,
+        OR: [{ lastPumpCommandAt: null }, { lastPumpCommandAt: { lte: new Date(now.getTime() - SOAK_MINUTES * 60_000) } }],
+      },
+      data: { lastPumpCommandAt: now, lastPumpCommandSec: actions.pumpSeconds },
+    });
+    if (claimed.count === 0) actions = { ...actions, pumpSeconds: 0 };
+  }
+
   return json({
     ok: true,
-    accepted: rows.length,
+    accepted: inserted.count,
+    duplicates: rows.length - inserted.count,
     rejected,
-    actions: state.actions,
+    actions,
     expression: state.vitals.expression,
     status: state.vitals.status,
     issues: state.vitals.issues,

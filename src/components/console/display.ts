@@ -1,4 +1,5 @@
 /** Display metadata for vitals in the console. Client-safe, no JSX. */
+import { DEMO_SERIAL_PREFIX } from "@/lib/companion/settings";
 import type { MetricKey, MetricState, Severity, VitalStatus } from "@/lib/vitals";
 
 export type Tone = "leaf" | "sky" | "sun" | "rose" | "neutral";
@@ -35,5 +36,5 @@ export const TONE_COLOR: Record<Tone, string> = {
 };
 
 export function isDemoSerial(serial: string): boolean {
-  return serial.startsWith("OEE-DEMO");
+  return serial.startsWith(DEMO_SERIAL_PREFIX);
 }

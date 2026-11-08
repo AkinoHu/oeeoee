@@ -43,6 +43,10 @@ export function DeviceSettingsForm({
         <div>
           <Label htmlFor="ds-plant">{t("devices.plant")}</Label>
           <Select id="ds-plant" name="plantId" value={plantId} onChange={(e) => setPlantId(e.target.value)}>
+            {/* A plant that left the catalog stays selectable, or the select would show (and save) the first option. */}
+            {device.plantId && !plants.some((p) => p.id === device.plantId) && (
+              <option value={device.plantId}>{t("devices.plantRetired", { id: device.plantId })}</option>
+            )}
             {plants.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}

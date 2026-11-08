@@ -3,11 +3,13 @@ import {
   assessVitals,
   careActions,
   careProfile,
+  dailyPumpBudgetSec,
   inWindow,
   lightWindow,
   localHour,
   mergeSnapshots,
   parseClock,
+  pumpUsage,
   type PlantLike,
   type TelemetrySnapshot,
 } from "./vitals";
@@ -53,7 +55,18 @@ describe("helpers", () => {
   it("centres the light window on early afternoon", () => {
     expect(lightWindow(8)).toEqual({ start: 9, end: 17 });
     expect(lightWindow(12)).toEqual({ start: 7, end: 19 });
-    expect(lightWindow(40)).toEqual({ start: 4, end: 22 }); // clamped to 18h
+    const noQuiet = { start: "00:00", end: "00:00" };
+    expect(lightWindow(40, noQuiet)).toEqual({ start: 4, end: 22 }); // clamped to 18h
+  });
+
+  it("keeps the light window out of quiet hours", () => {
+    // 14 h centred on 13:00 is 06:00–20:00, inside the default 22:30–07:00 quiet hours: shift it.
+    expect(lightWindow(14)).toEqual({ start: 7, end: 21 });
+    // 16 h can't fit in the 15.5 waking hours: clip to them.
+    expect(lightWindow(16)).toEqual({ start: 7, end: 22.5 });
+    expect(lightWindow(14, { start: "21:00", end: "09:00" })).toEqual({ start: 9, end: 21 });
+    // Night shift: asleep 08:00–16:00, so the light runs 16:00–24:00.
+    expect(lightWindow(8, { start: "08:00", end: "16:00" })).toEqual({ start: 16, end: 0 });
   });
 
   it("computes local hours in a time zone and falls back to UTC", () => {
@@ -198,6 +211,61 @@ describe("careActions", () => {
     expect(careActions(pothos, reading({ soilMoisture: 10, waterLevel: 3 }), AFTERNOON, opts).pumpSeconds).toBe(0);
     expect(careActions(pothos, reading({ soilMoisture: null }), AFTERNOON, opts).pumpSeconds).toBe(0);
     expect(careActions(pothos, null, AFTERNOON, opts).pumpSeconds).toBe(0);
+  });
+
+  it("never waters without a tank reading", () => {
+    // The pump could be running dry.
+    expect(careActions(pothos, reading({ soilMoisture: 20, waterLevel: null }), AFTERNOON, opts).pumpSeconds).toBe(0);
+  });
+
+  it("never doses more than the water left in the tank", () => {
+    const s = { ...opts, potSize: "S", reservoirMl: 600 };
+    // 8% of 600 ml with a 5% floor = 18 ml = 3 s at 6 ml/s (it wanted 14 s).
+    expect(careActions(pothos, reading({ soilMoisture: 20, waterLevel: 8 }), AFTERNOON, s).pumpSeconds).toBe(3);
+    // 6% leaves 6 ml: less than the shortest useful dose.
+    expect(careActions(pothos, reading({ soilMoisture: 20, waterLevel: 6 }), AFTERNOON, s).pumpSeconds).toBe(0);
+    expect(careActions(pothos, reading({ soilMoisture: 20, waterLevel: 80 }), AFTERNOON, s).pumpSeconds).toBe(14);
+  });
+
+  it("stops at the pot's 24 h pump budget", () => {
+    const m = { ...opts, potSize: "M", reservoirMl: 1200 };
+    const dry = reading({ soilMoisture: 30 }); // wants 14 s
+    expect(dailyPumpBudgetSec("M")).toBe(80);
+    expect(dailyPumpBudgetSec("S")).toBeLessThan(dailyPumpBudgetSec("L"));
+    expect(careActions(pothos, dry, AFTERNOON, { ...m, pumpedLast24hSec: 75 }).pumpSeconds).toBe(5);
+    expect(careActions(pothos, dry, AFTERNOON, { ...m, pumpedLast24hSec: 79 }).pumpSeconds).toBe(0);
+    expect(careActions(pothos, dry, AFTERNOON, { ...m, pumpedLast24hSec: 500 }).pumpSeconds).toBe(0);
+  });
+
+  it("counts a commanded dose until the pot reports it, and soaks from the command", () => {
+    const at = (min: number) => new Date(AFTERNOON.getTime() - min * 60000);
+    // Told to pump 5 min ago, not reported yet: soak from the command, and it counts.
+    expect(pumpUsage({ now: AFTERNOON, reportedAt: at(300), reported24hSec: 20, commandAt: at(5), commandSec: 14 })).toEqual({
+      lastWateredAt: at(5),
+      last24hSec: 34,
+    });
+    // Reported back since: already in the reported sum, don't count it twice.
+    expect(pumpUsage({ now: AFTERNOON, reportedAt: at(1), reported24hSec: 34, commandAt: at(5), commandSec: 14 })).toEqual({
+      lastWateredAt: at(1),
+      last24hSec: 34,
+    });
+    // A command older than 24 h no longer counts.
+    expect(pumpUsage({ now: AFTERNOON, reportedAt: null, reported24hSec: 0, commandAt: at(25 * 60), commandSec: 14 }).last24hSec).toBe(0);
+    expect(pumpUsage({ now: AFTERNOON, reportedAt: null, reported24hSec: 0, commandAt: null, commandSec: null })).toEqual({
+      lastWateredAt: null,
+      last24hSec: 0,
+    });
+  });
+
+  it("keeps the grow light off in quiet hours", () => {
+    const sun: PlantLike = { ...pothos, care: { ...pothos.care, lightHours: 14 } };
+    const at = (iso: string) => new Date(`2026-06-01T${iso}:00Z`);
+    // 06:30 is inside the default quiet hours (until 07:00): stay dark.
+    expect(careActions(sun, reading({ lightLux: 0 }, at("06:30")), at("06:30"), opts).growLightOn).toBe(false);
+    // The window moved later instead: 20:30 is still lit.
+    expect(careActions(sun, reading({ lightLux: 0 }, at("20:30")), at("20:30"), opts).growLightOn).toBe(true);
+    const lateRiser = { ...opts, quietHours: { start: "23:00", end: "10:00" } };
+    expect(careActions(pothos, reading({ lightLux: 0 }, at("09:30")), at("09:30"), lateRiser).growLightOn).toBe(false);
   });
 
   it("never waters on a stale reading", () => {

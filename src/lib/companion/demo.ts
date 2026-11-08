@@ -9,8 +9,10 @@ import {
   careProfile,
   GROW_LIGHT_LUX,
   localHour,
+  PUMP_ML_PER_SEC,
   PUMP_SEC_PER_PCT,
   type PlantLike,
+  type QuietHours,
   type TelemetrySnapshot,
 } from "@/lib/vitals";
 
@@ -24,6 +26,7 @@ export interface SimulationOptions {
   hours?: number;
   intervalMinutes?: number;
   timeZone?: string | null;
+  quietHours?: QuietHours | null;
   seed?: number;
   /** Desired water-tank level at the end of the run, %. */
   endTankLevel?: number;
@@ -52,7 +55,6 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-const PUMP_ML_PER_SEC = 6;
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
@@ -95,8 +97,11 @@ function run(opts: SimulationOptions, startTank: number): { readings: SimulatedR
     // Auto-care decides from the previous reading, like the real pot.
     const actions = careActions(opts.plant, prev, at, {
       timeZone: opts.timeZone,
+      quietHours: opts.quietHours,
       potSize: opts.potSize,
+      reservoirMl: reservoir,
       lastWateredAt,
+      pumpedLast24hSec: readings.reduce((s, r) => (at.getTime() - r.recordedAt.getTime() < 86400000 ? s + r.pumpRanSec : s), 0),
     });
     growLightOn = actions.growLightOn;
     let pumpRanSec = 0;

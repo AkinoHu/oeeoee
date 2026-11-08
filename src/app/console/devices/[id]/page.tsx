@@ -60,7 +60,7 @@ export default async function DevicePage({ params, searchParams }: PageProps<"/c
   const { vitals, actions, snapshot } = state;
   const plant = getPlant(device.plantId);
   const profile = careProfile(plant);
-  const window = lightWindow(profile.lightHours);
+  const window = lightWindow(profile.lightHours, clock.vitalsOptions.quietHours);
   const plants = listPlants()
     .map((p) => ({ id: p.id, name: lt(p.name, locale) }))
     .sort((a, b) => a.name.localeCompare(b.name, locale));
@@ -87,7 +87,12 @@ export default async function DevicePage({ params, searchParams }: PageProps<"/c
     { label: t("device.target.soil"), value: formatRange("soilMoisture", profile.soilMoisture, locale) },
     {
       label: t("device.target.light"),
-      value: t("device.target.lightValue", { h: profile.lightHours, start: formatClock(window.start), end: formatClock(window.end) }),
+      // Hours actually scheduled: quiet hours can clip a long photoperiod.
+      value: t("device.target.lightValue", {
+        h: formatNumber((window.end - window.start + 24) % 24, locale, 1),
+        start: formatClock(window.start),
+        end: formatClock(window.end),
+      }),
     },
     { label: t("device.target.lux"), value: formatRange("lightLux", profile.lux, locale) },
     { label: t("device.target.temp"), value: formatRange("airTemp", profile.tempRange, locale) },
@@ -207,8 +212,12 @@ export default async function DevicePage({ params, searchParams }: PageProps<"/c
             <SectionTitle>{t("device.autoCare")}</SectionTitle>
             <ul className="space-y-2 text-sm">
               <li className="flex items-center gap-2">
-                <Droplets className={cn("h-4 w-4", actions.pumpSeconds > 0 ? "text-sky" : "text-faint")} aria-hidden />
-                {actions.pumpSeconds > 0 ? t("device.autoCare.water", { s: actions.pumpSeconds }) : t("device.autoCare.noWater")}
+                <Droplets className={cn("h-4 w-4 shrink-0", actions.pumpSeconds > 0 ? "text-sky" : "text-faint")} aria-hidden />
+                {actions.pumpSeconds > 0
+                  ? t("device.autoCare.water", { s: actions.pumpSeconds })
+                  : vitals.metrics.soilMoisture.level === "low"
+                    ? t("device.autoCare.waterHeld")
+                    : t("device.autoCare.noWater")}
               </li>
               <li className="flex items-center gap-2">
                 {actions.growLightOn ? (

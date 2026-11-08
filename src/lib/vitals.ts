@@ -103,9 +103,15 @@ export interface CareActions {
 
 export interface CareOptions {
   timeZone?: string | null;
+  /** The grow light stays off inside them (default 22:30–07:00). */
+  quietHours?: QuietHours | null;
   potSize?: string | null;
-  /** When the pump last ran; watering pauses while the soil soaks up water. */
+  /** Reservoir capacity (ml); a dose never exceeds the water left. Defaults to the smallest pot's. */
+  reservoirMl?: number | null;
+  /** When the pump last ran or was told to; watering pauses while the soil soaks up water. */
   lastWateredAt?: Date | null;
+  /** Pump seconds run or commanded in the last 24 h, against `dailyPumpBudgetSec`. */
+  pumpedLast24hSec?: number;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -126,6 +132,11 @@ export const SOAK_MINUTES = 20;
 export const PUMP_SEC_PER_PCT: Record<string, number> = { S: 0.5, M: 0.8, L: 1.3 };
 const PUMP_MIN_SEC = 2;
 const PUMP_MAX_SEC = 30;
+/** Flow of the pot's pump. */
+export const PUMP_ML_PER_SEC = 6;
+/** Smallest pot model's reservoir, assumed when the pot size is unknown. */
+const FALLBACK_RESERVOIR_ML = 600;
+const DAY_MS = 24 * 3600_000;
 
 const HUMIDITY_RANGE: Record<Level3, [number, number]> = {
   low: [20, 60],
@@ -201,10 +212,27 @@ export function inWindow(h: number, start: number, end: number): boolean {
   return start < end ? h >= start && h < end : h >= start || h < end;
 }
 
-/** Grow-light schedule: `lightHours` centred on early afternoon, in local hours. */
-export function lightWindow(lightHours: number): { start: number; end: number } {
+/**
+ * Grow-light schedule in local hours: `lightHours` centred on early afternoon,
+ * moved out of the user's quiet hours (default 22:30–07:00), or clipped to the
+ * waking hours when it can't fit. `end` < `start` means it runs past midnight.
+ */
+export function lightWindow(lightHours: number, quietHours?: QuietHours | null): { start: number; end: number } {
   const hours = Math.min(18, Math.max(0, lightHours));
-  return { start: LIGHT_CENTER_HOUR - hours / 2, end: LIGHT_CENTER_HOUR + hours / 2 };
+  let start = LIGHT_CENTER_HOUR - hours / 2;
+  const q = quietHours ?? DEFAULT_QUIET_HOURS;
+  const quietStart = parseClock(q.start) ?? parseClock(DEFAULT_QUIET_HOURS.start)!;
+  const quietEnd = parseClock(q.end) ?? parseClock(DEFAULT_QUIET_HOURS.end)!;
+  if (hours > 0 && quietStart !== quietEnd) {
+    // Waking hours run from the end of quiet hours to their start.
+    const awake = (quietStart - quietEnd + 24) % 24;
+    if (hours >= awake) return { start: quietEnd, end: quietStart };
+    // Where the centred window starts relative to waking up, in (-12, 12] h; slide it inside.
+    const offset = ((((start - quietEnd + 12) % 24) + 24) % 24) - 12;
+    start = quietEnd + Math.min(awake - hours, Math.max(0, offset));
+  }
+  start = ((start % 24) + 24) % 24;
+  return { start, end: (start + hours) % 24 };
 }
 
 export function isQuietTime(now: Date, opts: Pick<VitalsOptions, "timeZone" | "quietHours"> = {}): boolean {
@@ -258,7 +286,7 @@ export function assessVitals(
 ): VitalsAssessment {
   const profile = careProfile(plant);
   const night = isQuietTime(now, opts);
-  const win = lightWindow(profile.lightHours);
+  const win = lightWindow(profile.lightHours, opts.quietHours);
   const daytime = inWindow(localHour(now, opts.timeZone), win.start, win.end);
 
   const metrics: Record<MetricKey, MetricState> = {
@@ -415,10 +443,13 @@ function pickExpression(issues: VitalIssue[], status: VitalStatus, night: boolea
 /**
  * What the pot should do right now.
  * - Water when a fresh (≤ 1 h old) soil reading is below the plant's minimum,
- *   the tank isn't empty and the last watering has had time to soak in. Dose scales with the
- *   deficit (to the middle of the target range) and the pot size.
- * - Grow light follows a `lightHours` window centred on early afternoon and
- *   stays off when ambient light already meets the plant's minimum lux.
+ *   the tank level is known and not empty, and the last watering (reported or
+ *   commanded) has had time to soak in. Dose scales with the deficit (to the
+ *   middle of the target range) and the pot size, and never exceeds the water
+ *   left in the tank or the pot's 24 h pump budget.
+ * - Grow light follows a `lightHours` window centred on early afternoon but
+ *   outside quiet hours, and stays off when ambient light already meets the
+ *   plant's minimum lux.
  */
 export function careActions(
   plant: PlantLike | null | undefined,
@@ -440,18 +471,54 @@ function pumpDose(profile: CareProfile, t: TelemetrySnapshot | null | undefined,
   if (now.getTime() - t.recordedAt.getTime() > OFFLINE_AFTER_MINUTES * 60000) return 0;
   const [min, max] = profile.soilMoisture;
   if (soil >= min) return 0;
-  const tank = num(t?.waterLevel);
-  if (tank !== null && tank <= TANK_EMPTY) return 0;
+  // Unknown tank level: the pump might run dry, so don't.
+  const tank = num(t.waterLevel);
+  if (tank === null || tank <= TANK_EMPTY) return 0;
   if (opts.lastWateredAt && now.getTime() - opts.lastWateredAt.getTime() < SOAK_MINUTES * 60000) return 0;
   const target = (min + max) / 2;
   const perPct = PUMP_SEC_PER_PCT[opts.potSize ?? "M"] ?? PUMP_SEC_PER_PCT.M;
-  const seconds = Math.round((target - soil) * perPct);
-  return Math.min(PUMP_MAX_SEC, Math.max(PUMP_MIN_SEC, seconds));
+  const wanted = Math.min(PUMP_MAX_SEC, Math.max(PUMP_MIN_SEC, Math.round((target - soil) * perPct)));
+  // Never more than the water above the empty mark, nor past the day's budget.
+  const reservoirMl = opts.reservoirMl ?? FALLBACK_RESERVOIR_ML;
+  const waterSec = Math.floor((reservoirMl * (tank - TANK_EMPTY)) / 100 / PUMP_ML_PER_SEC);
+  const budgetSec = dailyPumpBudgetSec(opts.potSize) - Math.max(0, opts.pumpedLast24hSec ?? 0);
+  const seconds = Math.min(wanted, waterSec, budgetSec);
+  return seconds >= PUMP_MIN_SEC ? seconds : 0;
+}
+
+/**
+ * Pump seconds a pot may run in any 24 h: enough to take its soil from bone
+ * dry to soaked once. Stops a stuck-dry soil sensor from emptying the tank
+ * onto the desk.
+ */
+export function dailyPumpBudgetSec(potSize?: string | null): number {
+  return Math.round(100 * (PUMP_SEC_PER_PCT[potSize ?? "M"] ?? PUMP_SEC_PER_PCT.M));
+}
+
+/**
+ * Pump bookkeeping for `careActions`. The soak interval runs from the later of
+ * the last reported watering and the last commanded dose (so a retried request
+ * can't get a second dose), and a commanded dose the pot hasn't reported back
+ * yet still counts toward the 24 h budget.
+ */
+export function pumpUsage(input: {
+  now: Date;
+  /** Newest reading with `pumpRanSec` > 0. */
+  reportedAt: Date | null;
+  /** Sum of reported `pumpRanSec` over the last 24 h. */
+  reported24hSec: number;
+  commandAt: Date | null;
+  commandSec: number | null;
+}): { lastWateredAt: Date | null; last24hSec: number } {
+  const { now, reportedAt, commandAt } = input;
+  const unreported = commandAt !== null && !(reportedAt && reportedAt >= commandAt) && now.getTime() - commandAt.getTime() < DAY_MS;
+  const lastWateredAt = reportedAt && commandAt ? (reportedAt > commandAt ? reportedAt : commandAt) : (reportedAt ?? commandAt);
+  return { lastWateredAt, last24hSec: input.reported24hSec + (unreported ? (input.commandSec ?? 0) : 0) };
 }
 
 function growLight(profile: CareProfile, t: TelemetrySnapshot | null | undefined, now: Date, opts: CareOptions): boolean {
   if (profile.lightHours <= 0) return false;
-  const { start, end } = lightWindow(profile.lightHours);
+  const { start, end } = lightWindow(profile.lightHours, opts.quietHours);
   if (!inWindow(localHour(now, opts.timeZone), start, end)) return false;
   const lux = num(t?.lightLux);
   if (lux === null) return true; // no light sensor data: follow the schedule

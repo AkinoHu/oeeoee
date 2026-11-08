@@ -6,7 +6,7 @@ import { createDevice, type CreateDeviceState } from "@/app/console/actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/primitives";
 import { useT } from "@/i18n/client";
-import { POT_SIZES } from "@/lib/companion/settings";
+import { MAX_POTS_PER_USER, POT_SIZES } from "@/lib/companion/settings";
 import { TokenReveal } from "./TokenReveal";
 
 export interface PlantOption {
@@ -67,7 +67,7 @@ export function AddDeviceForm({ plants, baseUrl }: { plants: PlantOption[]; base
       </Button>
       {state.ok === false && !errors.name && (
         <p role="alert" className="text-sm text-rose sm:col-span-4">
-          {t("devices.error")}
+          {state.limitReached ? t("devices.limit", { max: MAX_POTS_PER_USER }) : t("devices.error")}
         </p>
       )}
     </form>
