@@ -28,10 +28,10 @@ flowchart LR
     Mic[麦克风/扬声器] <--> MCU
     MCU --> Face[表情屏]
   end
-  subgraph Cloud["Web 中台 (本仓库 · Cloudflare Workers + D1)"]
+  subgraph Cloud["Web 中台 (本仓库 · Railway)"]
     API[设备 API<br/>/api/device/*]
     Brain[AI 大脑<br/>人设+记忆+体征+上下文]
-    DB[(D1 数据库)]
+    DB[(Postgres)]
     Console[控制台<br/>记忆·模型·参数·设备]
     Shop[官网商城<br/>世界地图·推荐·Stripe]
   end
@@ -135,7 +135,7 @@ flowchart LR
 |---|---|---|
 | **谷歌登录在中国大陆不可用** | 国内用户无法登录 | 国内版增加微信登录 / 手机号验证码。当前代码基于 Better Auth，可直接加 provider |
 | **Stripe 不支持中国大陆主体** | 无法开户收款 | 用香港 / 新加坡 / 美国主体开 Stripe，国内用户通过 Stripe 的支付宝、微信支付付款；长期国内直连微信支付/支付宝商户 |
-| **服务器在境外** | Cloudflare 在中国大陆没有境内节点（中国网络服务需另行开通且要 ICP 备案），国内访问不稳定 | 海外版用 Cloudflare（oeeoee.com）；国内版单独部署到阿里云/腾讯云，完成 ICP 备案 |
+| **服务器在境外** | 国内访问慢；境内服务器需要 ICP 备案 | 海外版用 Railway；国内版单独部署到阿里云/腾讯云，完成 ICP 备案 |
 | **大模型合规** | Anthropic Claude 不在中国大陆提供服务；国内提供生成式 AI 服务需要备案 | 中台已把模型做成每个角色可配置；国内版接入已备案的国产模型（通义、DeepSeek、豆包等），海外版用 Claude |
 | **地图合规（审图号）** | 在中国公开展示的地图需符合国家标准、领土表示须完整准确 | 首页用"点阵地图"，不画国界线；中国高亮分组集中在一个配置常量里（`MARKET_FEATURE_GROUPS`），上线前请法务审核；国内版建议使用带审图号的底图 |
 | **隐私：电脑插件、截图、健康数据** | 国内《个人信息保护法》、欧盟 GDPR、苹果/谷歌健康数据政策 | 本地处理、只传类别和统计值、逐项明示同意、可一键删除；健康数据不得用于广告 |
@@ -174,12 +174,12 @@ flowchart LR
 | AI 大脑 | `src/lib/companion/*` | 人设 + 植物性格 + 体征 + 记忆 + 历史 → 大模型 → 回复 + 表情 + 自动记忆 |
 | 多语言 | 中 / 英 / 日 | `src/i18n` |
 
-技术栈：Next.js 16 · Prisma 7 + Cloudflare D1 · Better Auth（谷歌登录）· Stripe · Claude API · Tailwind v4 · 部署 Cloudflare Workers（oeeoee.com）。
+技术栈：Next.js 16 · Prisma 7 + PostgreSQL · Better Auth（谷歌登录）· Stripe · Claude API · Tailwind v4 · 部署 Railway（域名 oeeoee.com 的 DNS 在 Cloudflare）。
 部署步骤见 [`DEPLOY.md`](DEPLOY.md)，任务拆分见 [`TASKS.md`](TASKS.md)，固件对接见 [`DEVICE_API.md`](DEVICE_API.md)。
 
 ### 验证情况
 
 - 已验证：类型检查、代码规范、178 个单元测试、生产构建；用浏览器走完整条流程（地图选区→国家→花盆页、合作商页、登录、控制台+演示花盆+对话、管理后台、手机宽度中文版），无服务器报错。
 - 需要真实密钥后再验一次：**谷歌登录**（本地用开发者邮箱登录代替）、**Stripe 真实支付**（已用签名的模拟 Webhook 验证订单状态流转）、**Claude 真实对话**（本地走规则兜底回复；请求格式有单元测试覆盖）。
-- 已知限制：表单/设备/对话的限流存在 Worker 实例内存里，只是尽力而为，需要严格限流时换成 Cloudflare Rate Limiting 或 Durable Objects；D1 不支持原子事务；合作商申请没有邮件通知；用户的订单只按账号关联。
+- 已知限制：表单/设备/对话的限流存在单进程内存里，Railway 扩到多实例前需换 Redis；合作商申请没有邮件通知；用户的订单只按账号关联。
 - 说明：当前 Claude API 版本不再接受 `temperature` 参数，控制台里的"活泼度"滑块改为通过提示词调节语气。

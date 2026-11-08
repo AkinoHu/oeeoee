@@ -1,6 +1,0 @@
-# Local secrets for `pnpm preview` (wrangler dev on http://localhost:8787).
-BETTER_AUTH_SECRET="dev-secret-change-me-dev-secret-change-me"
-BETTER_AUTH_URL="http://localhost:8787"
-NEXT_PUBLIC_APP_URL="http://localhost:8787"
-AUTH_DEV_PASSWORD_LOGIN="true"
-ADMIN_EMAILS="dev@example.com"

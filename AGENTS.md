@@ -23,14 +23,8 @@ that hosts the companion's brain. See `docs/PLAN.md` and `docs/TASKS.md`.
 - Tailwind CSS v4 — tokens in `src/app/globals.css` (`bg-bg`, `bg-surface`, `bg-surface-2`,
   `border-line`, `text-fg`, `text-muted`, `text-faint`, `leaf-50…900`, `sky`, `sun`, `rose`,
   helpers `.glass`, `.text-gradient`, `.bg-grid`, `.eyebrow`). Dark-only design.
-- Runs on **Cloudflare Workers** via OpenNext (`wrangler.jsonc`, `open-next.config.ts`).
-  Server code must be Workers-compatible (nodejs_compat is on; no native modules, no
-  runtime WebAssembly compilation). Env vars reach `process.env` per request — read them
-  inside functions, not at module top level.
-- Prisma 7 + **Cloudflare D1 (SQLite)** via `@prisma/adapter-d1`. Client: `import { prisma } from "@/lib/db"`
-  (resolves the `DB` binding per request). Generated types: `@/generated/prisma/client`.
-  No case-insensitive `mode`, no `skipDuplicates`; transactions are not atomic on D1.
-  Schema changes: edit `prisma/schema.prisma` → `pnpm db:new-migration <name>` → `pnpm db:migrate:local`.
+- Prisma 7 + PostgreSQL. Client: `import { prisma } from "@/lib/db"`. Generated types:
+  `@/generated/prisma/client`. **Do not edit `prisma/schema.prisma`** without coordinating.
 - Better Auth (Google OAuth; email+password only when `AUTH_DEV_PASSWORD_LOGIN=true`).
   Server: `getSession()`, `getUser()`, `requireUser(returnTo)`, `requireAdmin()` from `@/lib/session`.
   Client: `signIn`, `signOut`, `useSession` from `@/lib/auth-client`.
@@ -70,14 +64,12 @@ pnpm dev            # http://localhost:3000
 pnpm typecheck      # next typegen && tsc --noEmit
 pnpm lint
 pnpm test           # vitest (src/**/*.test.ts)
-pnpm build                # plain next build
-pnpm cf:preview           # OpenNext build + wrangler dev (real Workers runtime) on :8787
-pnpm db:migrate:local     # apply migrations/ to the local D1 (.wrangler/)
+pnpm build
+pnpm db:migrate     # prisma migrate dev
 ```
 
-Copy `.env.example` → `.env` (for `pnpm dev`) and `.dev.vars.example` → `.dev.vars` (for `cf:preview`).
+Local DB: `postgresql://postgres:postgres@localhost:5432/oeeoee`. Copy `.env.example` → `.env`.
 Set `BETTER_AUTH_URL`/`NEXT_PUBLIC_APP_URL` to the port you run on, or auth rejects the origin.
-Deploying: see `docs/DEPLOY.md`.
 
 ## Quality bar
 

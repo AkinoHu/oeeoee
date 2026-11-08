@@ -46,9 +46,9 @@ export default async function AdminPartnersPage({ searchParams }: PageProps<"/ad
     ...(q
       ? {
           OR: [
-            { company: { contains: q } },
-            { contactName: { contains: q } },
-            { email: { contains: q } },
+            { company: { contains: q, mode: "insensitive" } },
+            { contactName: { contains: q, mode: "insensitive" } },
+            { email: { contains: q, mode: "insensitive" } },
           ],
         }
       : {}),

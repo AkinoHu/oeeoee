@@ -3,9 +3,12 @@ import { defineConfig } from "prisma/config";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
   datasource: {
-    // The app talks to Cloudflare D1 through @prisma/adapter-d1, so this URL is
-    // only used by Prisma CLI tooling (e.g. `prisma migrate diff`).
-    url: process.env.DATABASE_URL ?? "file:./prisma/dev.db",
+    // Railway injects DATABASE_URL at build & runtime. A placeholder keeps
+    // `prisma generate` working in environments without a database.
+    url: process.env.DATABASE_URL ?? "postgresql://placeholder:placeholder@localhost:5432/placeholder",
   },
 });
