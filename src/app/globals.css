@@ -18,7 +18,7 @@
   --color-line-strong: #2c3d35;
   --color-fg: #e9f0ea;
   --color-muted: #8ea096;
-  --color-faint: #5b6b63;
+  --color-faint: #7b8c83; /* ≥4.5:1 on every surface (WCAG AA) */
 
   /* chlorophyll accent */
   --color-leaf-50: #f3fde8;
