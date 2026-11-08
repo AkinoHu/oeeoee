@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     rules: {
       "*.css": {
+        // Leave CSS Modules to Next's own pipeline: matching them here turns
+        // `*.module.css` into global CSS and `import styles` silently yields {}.
+        condition: { not: { path: /\.module\.css$/ } },
         loaders: ["@tailwindcss/turbopack"],
         as: "*.css",
       },
