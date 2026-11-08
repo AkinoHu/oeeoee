@@ -8,7 +8,7 @@ import { PotPreview } from "@/components/pot/PotPreview";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { getCountry, getFinish, getPlant, getPotBySku, lt, type PotFinishId } from "@/data";
 import { useLocale, useT } from "@/i18n/client";
-import { MAX_LINE_QTY, MIN_LINE_QTY, lineKey, shownPlantId, type CartLine } from "@/lib/cart/types";
+import { MAX_LINE_QTY, MAX_LINES, MIN_LINE_QTY, lineKey, shownPlantId, type CartLine } from "@/lib/cart/types";
 import { formatMoney } from "@/lib/money";
 import { priceCart } from "@/lib/orders";
 import { cn } from "@/lib/utils";
@@ -124,7 +124,7 @@ export function CartDrawer() {
                             />
                           </div>
                         </div>
-                      ) : country.shipping.flatFee > 0 ? (
+                      ) : quote.shipping === 0 && country.shipping.flatFee > 0 ? (
                         <p className="mb-4 text-xs text-leaf-200">{t("cart.freeShippingUnlocked")}</p>
                       ) : null}
                       <dl className="space-y-1.5 text-sm">
@@ -199,6 +199,8 @@ function checkoutErrorMessage(code: string, t: ReturnType<typeof useT<"store">>)
       return t("cart.error.network");
     case "market_not_open":
       return t("cart.error.market_not_open");
+    case "cart_full":
+      return t("cart.error.full", { lines: MAX_LINES, qty: MAX_LINE_QTY });
     case "invalid_request":
     case "unknown_country":
     case "unknown_pot":

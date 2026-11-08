@@ -31,7 +31,8 @@ export const checkoutRequestSchema = z.object({
 export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>;
 
 export const waitlistRequestSchema = z.object({
-  email: z.email().trim().toLowerCase().max(254),
+  // Normalise before validating: z.email() checks the raw string, so " a@b.co " would fail.
+  email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
   countryCode: countryCodeSchema,
   locale: z.enum(locales).optional(),
   /** Honeypot: real people never fill this hidden field. */

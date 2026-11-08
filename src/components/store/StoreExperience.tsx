@@ -46,6 +46,8 @@ export function StoreExperience({
   const exprTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const plant = getPlant(studio.plantId) ?? plants[0];
+  // A quiz pick can come from outside the market's list: keep it in the strip so it shows as selected.
+  const stripPlants = useMemo(() => (plants.some((p) => p.id === plant.id) ? plants : [plant, ...plants]), [plants, plant]);
 
   function flashExpression(next: Expression, ms = 1400) {
     setExpression(next);
@@ -168,7 +170,7 @@ export function StoreExperience({
                     ? t("studio.plant.hint.full", { n: plants.length })
                     : t("studio.plant.hint.local", { n: plants.length, country: lt(country.name, locale) })}
                 </p>
-                <PlantSwitcher country={country} plants={plants} value={plant.id} size={studio.size} onChange={choosePlant} />
+                <PlantSwitcher country={country} plants={stripPlants} value={plant.id} size={studio.size} onChange={choosePlant} />
                 <CompanionCard
                   plant={plant}
                   size={studio.size}

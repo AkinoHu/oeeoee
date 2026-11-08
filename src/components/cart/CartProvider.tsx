@@ -23,8 +23,11 @@ export interface CartContextValue {
   isOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  /** Adds a line and opens the drawer; asks before replacing a cart for another country. */
-  add: (countryCode: string, line: CartLine) => "added" | "confirm_replace";
+  /**
+   * Adds a line and opens the drawer; asks before replacing a cart for another country.
+   * "full": nothing was added (line or quantity limit reached) — the drawer explains why.
+   */
+  add: (countryCode: string, line: CartLine) => "added" | "confirm_replace" | "full";
   setQuantity: (key: string, quantity: number) => void;
   remove: (key: string) => void;
   clear: () => void;
@@ -62,9 +65,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setPendingReplace({ countryCode, line });
       return "confirm_replace" as const;
     }
+    const before = cartCount(cartStore.getSnapshot());
     cartStore.dispatch({ type: "add", countryCode, line });
-    setCheckout({ phase: "idle" });
     setOpen(true);
+    if (cartCount(cartStore.getSnapshot()) === before) {
+      // The reducer caps lines and per-line quantity; don't pretend it was added.
+      setCheckout({ phase: "error", code: "cart_full" });
+      return "full" as const;
+    }
+    setCheckout({ phase: "idle" });
     return "added" as const;
   }, []);
 

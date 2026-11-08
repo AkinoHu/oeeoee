@@ -208,4 +208,17 @@ describe("checkout session → order", () => {
     });
     expect(paidOrderUpdate({ id: "cs_2", payment_intent: { id: "pi_x" } }).stripePaymentIntentId).toBe("pi_x");
   });
+
+  it("reads shipping from webhook payloads rendered in a pre-2025-03-31 API version", () => {
+    // Webhook events use the endpoint's API version, where shipping is a top-level field.
+    const update = paidOrderUpdate({
+      id: "cs_3",
+      payment_status: "paid",
+      customer_details: { name: "Billing Name", phone: null },
+      collected_information: null,
+      shipping_details: { name: "Ship Name", address: { country: "US", line1: "1 Main St" } },
+    });
+    expect(update.customerName).toBe("Ship Name");
+    expect(update.shippingAddress).toEqual({ name: "Ship Name", address: { country: "US", line1: "1 Main St" } });
+  });
 });
