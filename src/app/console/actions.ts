@@ -8,7 +8,7 @@ import { simulateTelemetry } from "@/lib/companion/demo";
 import { generateSerial, issueDeviceCredentials } from "@/lib/companion/device-token";
 import { companionClock, getOrCreateCompanion } from "@/lib/companion/queries";
 import { companionSettingsSchema, deviceCreateSchema, fieldErrors, memorySchema } from "@/lib/companion/schemas";
-import { readReminders } from "@/lib/companion/settings";
+import { DEMO_SERIAL_PREFIX, MAX_DEMO_POTS_PER_USER, MAX_POTS_PER_USER, readReminders, timezoneWasSet } from "@/lib/companion/settings";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { isValidTimeZone } from "@/lib/vitals";
@@ -17,7 +17,7 @@ export type FormState = { ok: boolean | null; errors?: Record<string, string>; a
 
 /** One-time credential reveal after creating a pot or rotating its token. */
 export type TokenReveal = { deviceId: string; name: string; serial: string; token: string };
-export type CreateDeviceState = FormState & { reveal?: TokenReveal };
+export type CreateDeviceState = FormState & { reveal?: TokenReveal; limitReached?: boolean };
 
 const formObject = (fd: FormData) => Object.fromEntries(Array.from(fd.entries()).filter(([, v]) => typeof v === "string"));
 
@@ -43,8 +43,9 @@ export async function saveDetectedTimezone(timeZone: string): Promise<void> {
   const user = await requireUser("/console");
   if (!isValidTimeZone(timeZone)) return;
   const companion = await getOrCreateCompanion(user.id);
+  // Only fill in a zone that was never set: one the user cleared stays cleared.
+  if (timezoneWasSet(companion.reminders)) return;
   const reminders = readReminders(companion.reminders);
-  if (reminders.timezone) return;
   await prisma.companion.update({ where: { id: companion.id }, data: { reminders: { ...reminders, timezone: timeZone } } });
   revalidatePath("/console", "layout");
 }
@@ -89,10 +90,22 @@ async function ownedDevice(userId: string, id: string) {
   return prisma.device.findFirst({ where: { id, userId } });
 }
 
+/** Which per-account pot limit (if any) stops creating another (demo) pot. */
+async function potLimitReached(userId: string, demo: boolean): Promise<"pots" | "demos" | null> {
+  const [all, demos] = await Promise.all([
+    prisma.device.count({ where: { userId } }),
+    demo ? prisma.device.count({ where: { userId, serial: { startsWith: DEMO_SERIAL_PREFIX } } }) : 0,
+  ]);
+  if (all >= MAX_POTS_PER_USER) return "pots";
+  if (demo && demos >= MAX_DEMO_POTS_PER_USER) return "demos";
+  return null;
+}
+
 export async function createDevice(_prev: CreateDeviceState, formData: FormData): Promise<CreateDeviceState> {
   const user = await requireUser("/console/devices");
   const parsed = deviceCreateSchema.safeParse(formObject(formData));
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error), at: Date.now() };
+  if (await potLimitReached(user.id, false)) return { ok: false, limitReached: true, at: Date.now() };
   const { token, tokenHash } = issueDeviceCredentials();
   const device = await prisma.device.create({
     data: {
@@ -110,12 +123,16 @@ export async function createDevice(_prev: CreateDeviceState, formData: FormData)
 
 export async function updateDevice(id: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser(`/console/devices/${id}`);
-  const parsed = deviceCreateSchema.safeParse(formObject(formData));
+  const device = await ownedDevice(user.id, id);
+  if (!device) return { ok: false };
+  const raw = formObject(formData);
+  // A plant that has left the catalog can't be picked again, but it can be kept.
+  const keepPlant = device.plantId !== null && raw.plantId === device.plantId;
+  const parsed = deviceCreateSchema.safeParse(keepPlant ? { ...raw, plantId: "" } : raw);
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error), at: Date.now() };
-  if (!(await ownedDevice(user.id, id))) return { ok: false };
   await prisma.device.update({
     where: { id },
-    data: { name: parsed.data.name, plantId: parsed.data.plantId || null, potSize: parsed.data.potSize },
+    data: { name: parsed.data.name, plantId: keepPlant ? device.plantId : parsed.data.plantId || null, potSize: parsed.data.potSize },
   });
   revalidatePath("/console", "layout");
   return { ok: true, at: Date.now() };
@@ -141,11 +158,13 @@ export async function deleteDevice(id: string): Promise<void> {
  * Create a pot with ~48 h of realistic simulated telemetry so the console can
  * be explored without hardware. Uses the real auto-care controller.
  */
-export async function createDemoPot(): Promise<{ deviceId: string }> {
+export async function createDemoPot(): Promise<{ deviceId: string } | { limit: "pots" | "demos" }> {
   const user = await requireUser("/console");
+  const limit = await potLimitReached(user.id, true);
+  if (limit) return { limit };
   const t = await getT("console");
   const companion = await getOrCreateCompanion(user.id);
-  const { timeZone } = companionClock(companion);
+  const { timeZone, vitalsOptions } = companionClock(companion);
   const plant = getPlant("pothos") ?? null;
   const potSize = "M";
   const now = new Date();
@@ -155,6 +174,7 @@ export async function createDemoPot(): Promise<{ deviceId: string }> {
     reservoirMl: getPotModel(potSize)?.reservoirMl,
     end: now,
     timeZone,
+    quietHours: vitalsOptions.quietHours,
     seed: now.getTime() % 100_000,
   });
   const { tokenHash } = issueDeviceCredentials();
@@ -162,7 +182,7 @@ export async function createDemoPot(): Promise<{ deviceId: string }> {
     data: {
       userId: user.id,
       name: t("demo.deviceName"),
-      serial: generateSerial("OEE-DEMO"),
+      serial: generateSerial(DEMO_SERIAL_PREFIX),
       tokenHash,
       plantId: plant?.id ?? null,
       potSize,

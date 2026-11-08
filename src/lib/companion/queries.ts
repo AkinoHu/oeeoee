@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { getPlant } from "@/data";
+import { getPlant, getPotModel } from "@/data";
 import { Prisma, type Device } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import {
@@ -8,6 +8,7 @@ import {
   careActions,
   isValidTimeZone,
   mergeSnapshots,
+  pumpUsage,
   METRIC_KEYS,
   type CareActions,
   type MetricKey,
@@ -74,6 +75,24 @@ export async function lastWateredAt(deviceId: string): Promise<Date | null> {
   return row?.recordedAt ?? null;
 }
 
+/** Reported waterings plus the last commanded dose (see `pumpUsage`). */
+async function pumpHistory(device: Device, now: Date) {
+  const [reportedAt, day] = await Promise.all([
+    lastWateredAt(device.id),
+    prisma.telemetry.aggregate({
+      where: { deviceId: device.id, recordedAt: { gt: new Date(now.getTime() - 24 * 3600_000) }, pumpRanSec: { gt: 0 } },
+      _sum: { pumpRanSec: true },
+    }),
+  ]);
+  return pumpUsage({
+    now,
+    reportedAt,
+    reported24hSec: day._sum.pumpRanSec ?? 0,
+    commandAt: device.lastPumpCommandAt,
+    commandSec: device.lastPumpCommandSec,
+  });
+}
+
 export interface PotState {
   device: Device;
   snapshot: TelemetrySnapshot | null;
@@ -82,13 +101,20 @@ export interface PotState {
 }
 
 export async function potState(device: Device, now: Date, opts: VitalsOptions): Promise<PotState> {
-  const [snapshot, watered] = await Promise.all([latestSnapshot(device.id), lastWateredAt(device.id)]);
+  const [snapshot, pump] = await Promise.all([latestSnapshot(device.id), pumpHistory(device, now)]);
   const plant = getPlant(device.plantId);
   return {
     device,
     snapshot,
     vitals: assessVitals(plant, snapshot, now, opts),
-    actions: careActions(plant, snapshot, now, { timeZone: opts.timeZone, potSize: device.potSize, lastWateredAt: watered }),
+    actions: careActions(plant, snapshot, now, {
+      timeZone: opts.timeZone,
+      quietHours: opts.quietHours,
+      potSize: device.potSize,
+      reservoirMl: device.potSize ? getPotModel(device.potSize)?.reservoirMl : null,
+      lastWateredAt: pump.lastWateredAt,
+      pumpedLast24hSec: pump.last24hSec,
+    }),
   };
 }
 

@@ -7,7 +7,7 @@ import { Logo } from "@/components/site/Logo";
 import { UserMenu } from "@/components/site/UserMenu";
 import { getT } from "@/i18n/server";
 import { getOrCreateCompanion } from "@/lib/companion/queries";
-import { readReminders } from "@/lib/companion/settings";
+import { timezoneWasSet } from "@/lib/companion/settings";
 import { isAdminEmail, requireUser } from "@/lib/session";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -51,7 +51,7 @@ export default async function ConsoleLayout({ children }: LayoutProps<"/console"
           {children}
         </main>
       </div>
-      <TimezoneSync needed={!readReminders(companion.reminders).timezone} />
+      <TimezoneSync needed={!timezoneWasSet(companion.reminders)} />
     </div>
   );
 }

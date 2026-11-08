@@ -24,10 +24,10 @@ export async function GET(request: Request) {
     getOrCreateCompanion(device.userId),
     prisma.device.update({ where: { id: device.id }, data: { lastSeenAt: now } }),
   ]);
-  const { reminders, timeZone } = companionClock(companion);
+  const { reminders, timeZone, vitalsOptions } = companionClock(companion);
   const plant = getPlant(device.plantId);
   const profile = careProfile(plant);
-  const window = lightWindow(profile.lightHours);
+  const window = lightWindow(profile.lightHours, vitalsOptions.quietHours);
   const nameLocale = isLocale(companion.language) ? companion.language : "en";
 
   return json({

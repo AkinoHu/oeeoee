@@ -28,6 +28,12 @@ export type ChatChannel = (typeof CHAT_CHANNELS)[number];
 
 export const POT_SIZES = ["S", "M", "L"] as const;
 
+/** Pots one account may have, and how many of them may be demo pots. */
+export const MAX_POTS_PER_USER = 20;
+export const MAX_DEMO_POTS_PER_USER = 3;
+/** Serial prefix that marks a simulated demo pot. */
+export const DEMO_SERIAL_PREFIX = "OEE-DEMO";
+
 /** How often a pot should report telemetry. */
 export const TELEMETRY_INTERVAL_SECONDS = 300;
 
@@ -56,6 +62,15 @@ export const DEFAULT_REMINDERS: ReminderSettings = {
 };
 
 const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * Whether a time zone was ever chosen, including deliberately cleared
+ * (`timezone: null` saved from the settings form). Only a never-set one may be
+ * filled in automatically from the browser or the pot.
+ */
+export function timezoneWasSet(json: unknown): boolean {
+  return Boolean(json && typeof json === "object" && !Array.isArray(json) && "timezone" in json);
+}
 
 /** Read the reminders JSON column defensively, filling defaults. */
 export function readReminders(json: unknown): ReminderSettings {

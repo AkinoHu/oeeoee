@@ -175,19 +175,24 @@ model WaitlistEntry {
 // ─────────────────────────────────────────────────────────────
 
 model Device {
-  id              String      @id @default(cuid())
-  userId          String
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name            String
-  serial          String      @unique
-  tokenHash       String      @unique // sha256 of the device bearer token; raw token shown once
-  plantId         String? // id from src/data/plants
-  potSize         String? // "S" | "M" | "L"
-  firmwareVersion String?
-  lastSeenAt      DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  telemetry       Telemetry[]
+  id                 String      @id @default(cuid())
+  userId             String
+  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String
+  serial             String      @unique
+  tokenHash          String      @unique // sha256 of the device bearer token; raw token shown once
+  plantId            String? // id from src/data/plants
+  potSize            String? // "S" | "M" | "L"
+  firmwareVersion    String?
+  lastSeenAt         DateTime?
+  // Last pump dose handed out by /api/device/telemetry. The soak interval runs
+  // from here (so a retried POST can't get a second dose), and a dose the pot
+  // hasn't reported back yet still counts toward the 24 h cap.
+  lastPumpCommandAt  DateTime?
+  lastPumpCommandSec Int?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  telemetry          Telemetry[]
 
   @@index([userId])
 }
@@ -206,7 +211,8 @@ model Telemetry {
   growLightOn  Boolean?
   pumpRanSec   Int? // seconds the pump ran since the previous reading
 
-  @@index([deviceId, recordedAt])
+  // One reading per instant: a retried upload is skipped, not stored twice.
+  @@unique([deviceId, recordedAt])
 }
 
 /// The AI character. MVP: one companion per user, shared across all of the user's pots.

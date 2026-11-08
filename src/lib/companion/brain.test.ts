@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assessVitals, type PlantLike } from "@/lib/vitals";
+import { assessVitals, dailyPumpBudgetSec, isQuietTime, type PlantLike } from "@/lib/vitals";
 import { simulateTelemetry } from "./demo";
 import { detectIntent, detectLanguage, extractMemory, fallbackReply, refusalReply, vitalsLine } from "./fallback";
 import { buildSystemPrompt, describeVitals, type BrainContext } from "./prompt";
@@ -192,6 +192,12 @@ describe("demo simulation", () => {
     expect(avg(noon)).toBeGreaterThan(avg(night) + 1000);
     expect(readings.some((r) => r.pumpRanSec > 0)).toBe(true);
     expect(readings.every((r) => r.soilMoisture > 20 && r.soilMoisture < 75)).toBe(true);
+  });
+
+  it("keeps the light off in quiet hours and the pump within its daily budget", () => {
+    expect(readings.some((r) => r.growLightOn && isQuietTime(r.recordedAt, { timeZone: "UTC" }))).toBe(false);
+    const lastDay = readings.filter((r) => NOW.getTime() - r.recordedAt.getTime() < 24 * 3600000);
+    expect(lastDay.reduce((s, r) => s + r.pumpRanSec, 0)).toBeLessThanOrEqual(dailyPumpBudgetSec("M"));
   });
 
   it("drains the tank to a low level", () => {

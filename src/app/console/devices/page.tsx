@@ -65,7 +65,9 @@ export default async function DevicesPage() {
                         <span className="truncate">{device.name}</span>
                         {isDemoSerial(device.serial) && <Badge>{t("demo.badge")}</Badge>}
                       </p>
-                      <p className="truncate text-sm text-muted">{plant ? lt(plant.name, locale) : t("devices.plantNone")}</p>
+                      <p className="truncate text-sm text-muted">
+                        {plant ? lt(plant.name, locale) : device.plantId ? t("device.unknownPlant") : t("devices.plantNone")}
+                      </p>
                     </div>
                     <ChevronRight className="mt-1 h-4 w-4 text-faint transition group-hover:translate-x-0.5 group-hover:text-fg" aria-hidden />
                   </div>
