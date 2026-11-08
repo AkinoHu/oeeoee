@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+/*
+ * oeeoee design tokens — dark, nocturnal greenhouse.
+ * Use the semantic utilities: bg-bg, bg-surface, bg-surface-2, border-line,
+ * text-fg, text-muted, text-leaf-300, bg-leaf-400, text-sky, text-sun, text-rose.
+ */
+@theme {
+  --font-sans: var(--font-geist-sans), "PingFang SC", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+    "Noto Sans CJK SC", "Noto Sans JP", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  --color-bg: #060a08;
+  --color-surface: #0c1310;
+  --color-surface-2: #121b17;
+  --color-surface-3: #18241f;
+  --color-line: #1e2b25;
+  --color-line-strong: #2c3d35;
+  --color-fg: #e9f0ea;
+  --color-muted: #8ea096;
+  --color-faint: #5b6b63;
+
+  /* chlorophyll accent */
+  --color-leaf-50: #f3fde8;
+  --color-leaf-100: #e2fbc9;
+  --color-leaf-200: #c9f79c;
+  --color-leaf-300: #b6f36b;
+  --color-leaf-400: #9be34a;
+  --color-leaf-500: #7cc72f;
+  --color-leaf-600: #5d9e20;
+  --color-leaf-700: #46781c;
+  --color-leaf-800: #355a1b;
+  --color-leaf-900: #1f3812;
+
+  /* secondary signals */
+  --color-sky: #7cd4ff;
+  --color-sun: #ffcf6b;
+  --color-rose: #ff7a90;
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+
+  --shadow-glow: 0 0 0 1px rgb(182 243 107 / 0.25), 0 8px 40px -8px rgb(155 227 74 / 0.45);
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-soft: pulse-soft 3s ease-in-out infinite;
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: var(--color-bg);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgb(182 243 107 / 0.3);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-leaf-300);
+  outline-offset: 2px;
+}
+
+@layer components {
+  /* Frosted panel used for overlays on the map and floating UI. */
+  .glass {
+    background: rgb(12 19 16 / 0.62);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid rgb(233 240 234 / 0.08);
+  }
+
+  .text-gradient {
+    background: linear-gradient(100deg, var(--color-leaf-200), var(--color-leaf-400) 45%, var(--color-sky));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Faint technical grid background. */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgb(233 240 234 / 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(233 240 234 / 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-leaf-300);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,44 @@
+import { defineMessages } from "../define";
+
+/** Login page. Owner: platform. */
+export default defineMessages({
+  en: {
+    "title": "Welcome to oeeoee",
+    "subtitle": "Sign in to order, connect your pot and talk to your plant companion.",
+    "google": "Continue with Google",
+    "googleMissing": "Google sign-in is not configured yet (set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).",
+    "dev.title": "Developer login",
+    "dev.email": "Email",
+    "dev.password": "Password",
+    "dev.submit": "Sign in / sign up",
+    "dev.hint": "Enabled because AUTH_DEV_PASSWORD_LOGIN=true. Never enable in production.",
+    "chinaNote": "In mainland China? WeChat and phone sign-in are coming soon.",
+    "terms": "By continuing you agree to our Terms and Privacy Policy.",
+  },
+  zh: {
+    "title": "欢迎来到 oeeoee",
+    "subtitle": "登录后即可下单、绑定花盆，并和你的植物伙伴聊天。",
+    "google": "使用 Google 继续",
+    "googleMissing": "尚未配置 Google 登录（请设置 GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET）。",
+    "dev.title": "开发者登录",
+    "dev.email": "邮箱",
+    "dev.password": "密码",
+    "dev.submit": "登录 / 注册",
+    "dev.hint": "因 AUTH_DEV_PASSWORD_LOGIN=true 而启用，生产环境切勿开启。",
+    "chinaNote": "在中国大陆？微信和手机号登录即将上线。",
+    "terms": "继续即表示你同意我们的服务条款和隐私政策。",
+  },
+  ja: {
+    "title": "oeeoee へようこそ",
+    "subtitle": "ログインすると、注文・ポットの接続・植物パートナーとの会話ができます。",
+    "google": "Google で続行",
+    "googleMissing": "Google ログインが未設定です（GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET を設定してください）。",
+    "dev.title": "開発者ログイン",
+    "dev.email": "メールアドレス",
+    "dev.password": "パスワード",
+    "dev.submit": "ログイン / 新規登録",
+    "dev.hint": "AUTH_DEV_PASSWORD_LOGIN=true のため有効です。本番環境では有効にしないでください。",
+    "chinaNote": "中国本土からのご利用ですか？WeChat・電話番号ログインは近日対応予定です。",
+    "terms": "続行すると、利用規約とプライバシーポリシーに同意したものとみなされます。",
+  },
+});

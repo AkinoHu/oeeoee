@@ -1,0 +1,265 @@
+// oeeoee — database schema
+// Owned by the platform layer. Feature work should not need to change this file;
+// if it does, coordinate first (see docs/TASKS.md).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auth (Better Auth core schema)
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  orders    Order[]
+  devices   Device[]
+  companion Companion?
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Commerce
+// ─────────────────────────────────────────────────────────────
+
+enum OrderStatus {
+  PENDING // checkout session created, not paid yet
+  PAID
+  FULFILLING
+  SHIPPED
+  DELIVERED
+  CANCELED
+  REFUNDED
+}
+
+model Order {
+  id                    String      @id @default(cuid())
+  userId                String?
+  user                  User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email                 String?
+  countryCode           String // ISO 3166-1 alpha-2 of the storefront
+  currency              String // ISO 4217, lower-case as Stripe uses
+  subtotal              Int // minor units
+  shippingAmount        Int         @default(0)
+  total                 Int
+  status                OrderStatus @default(PENDING)
+  stripeSessionId       String?     @unique
+  stripePaymentIntentId String?
+  customerName          String?
+  phone                 String?
+  shippingAddress       Json?
+  locale                String?
+  paidAt                DateTime?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  items                 OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id         String @id @default(cuid())
+  orderId    String
+  order      Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  kind       String // "pot" | "plant" | "addon"
+  sku        String
+  name       String
+  quantity   Int
+  unitAmount Int // minor units
+  meta       Json?
+
+  @@index([orderId])
+}
+
+enum PartnerStatus {
+  NEW
+  CONTACTED
+  APPROVED
+  REJECTED
+}
+
+model PartnerApplication {
+  id              String        @id @default(cuid())
+  company         String
+  contactName     String
+  email           String
+  phone           String?
+  countryCode     String
+  city            String?
+  website         String?
+  businessType    String // "nursery" | "grower" | "florist" | "distributor" | "other"
+  speciesNotes    String?       @db.Text
+  monthlyCapacity String?
+  message         String?       @db.Text
+  status          PartnerStatus @default(NEW)
+  createdAt       DateTime      @default(now())
+
+  @@index([countryCode])
+}
+
+model WaitlistEntry {
+  id          String   @id @default(cuid())
+  email       String
+  countryCode String
+  locale      String?
+  createdAt   DateTime @default(now())
+
+  @@unique([email, countryCode])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Platform (中台): devices, telemetry, companion brain
+// ─────────────────────────────────────────────────────────────
+
+model Device {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  serial          String      @unique
+  tokenHash       String      @unique // sha256 of the device bearer token; raw token shown once
+  plantId         String? // id from src/data/plants
+  potSize         String? // "S" | "M" | "L"
+  firmwareVersion String?
+  lastSeenAt      DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  telemetry       Telemetry[]
+
+  @@index([userId])
+}
+
+/// One sensor reading from a pot. All fields optional so partial payloads are accepted.
+model Telemetry {
+  id           String   @id @default(cuid())
+  deviceId     String
+  device       Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  recordedAt   DateTime @default(now())
+  soilMoisture Float? // % volumetric water content, 0–100
+  airTemp      Float? // °C
+  airHumidity  Float? // % RH
+  lightLux     Float? // lux at canopy
+  waterLevel   Float? // reservoir %, 0–100
+  growLightOn  Boolean?
+  pumpRanSec   Int? // seconds the pump ran since the previous reading
+
+  @@index([deviceId, recordedAt])
+}
+
+/// The AI character. MVP: one companion per user, shared across all of the user's pots.
+model Companion {
+  id          String        @id @default(cuid())
+  userId      String        @unique
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String        @default("Sprout")
+  persona     String        @default("") @db.Text // extra personality instructions
+  language    String        @default("auto") // "auto" | "en" | "zh" | "ja"
+  voice       String        @default("warm") // TTS voice preset id
+  model       String        @default("claude-haiku-5-5")
+  temperature Float         @default(0.8)
+  maxTokens   Int           @default(400)
+  reminders   Json? // { sedentaryMinutes, hydrationMinutes, workStart, workEnd, quietStart, quietEnd }
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  memories    Memory[]
+  messages    ChatMessage[]
+}
+
+enum MemoryKind {
+  FACT
+  PREFERENCE
+  EVENT
+  HEALTH
+  WORK
+}
+
+model Memory {
+  id          String     @id @default(cuid())
+  companionId String
+  companion   Companion  @relation(fields: [companionId], references: [id], onDelete: Cascade)
+  kind        MemoryKind @default(FACT)
+  content     String     @db.Text
+  importance  Int        @default(3) // 1 (trivia) – 5 (core)
+  source      String     @default("user") // "user" | "auto"
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([companionId])
+}
+
+model ChatMessage {
+  id          String    @id @default(cuid())
+  companionId String
+  companion   Companion @relation(fields: [companionId], references: [id], onDelete: Cascade)
+  role        String // "user" | "assistant"
+  content     String    @db.Text
+  expression  String? // face expression the assistant chose
+  channel     String    @default("web") // "web" | "device" | "desktop" | "mobile"
+  deviceId    String?
+  createdAt   DateTime  @default(now())
+
+  @@index([companionId, createdAt])
+}
