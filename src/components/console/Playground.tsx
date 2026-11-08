@@ -135,6 +135,8 @@ export function Playground({
         setTyping({ id, shown: 0 });
       }
     } catch {
+      // Give the unsent text back so it can be retried without retyping.
+      setInput((current) => current || text);
       setExpression("sad");
       setMessages((m) => [...m, { id: localId("e"), role: "assistant", content: t("playground.error"), error: true, expression: "sad" }]);
     } finally {

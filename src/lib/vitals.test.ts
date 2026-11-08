@@ -200,6 +200,13 @@ describe("careActions", () => {
     expect(careActions(pothos, null, AFTERNOON, opts).pumpSeconds).toBe(0);
   });
 
+  it("never waters on a stale reading", () => {
+    // Only backfilled / old readings (the pot is offline): the soil may have changed since.
+    const hoursAgo = (h: number) => new Date(AFTERNOON.getTime() - h * 3600_000);
+    expect(careActions(pothos, { ...reading({ soilMoisture: 20 }), recordedAt: hoursAgo(3) }, AFTERNOON, opts).pumpSeconds).toBe(0);
+    expect(careActions(pothos, { ...reading({ soilMoisture: 20 }), recordedAt: hoursAgo(0.5) }, AFTERNOON, opts).pumpSeconds).toBeGreaterThan(0);
+  });
+
   it("waits for the soil to soak after a recent watering", () => {
     const recent = new Date(AFTERNOON.getTime() - 5 * 60000);
     expect(careActions(pothos, reading({ soilMoisture: 20 }), AFTERNOON, { ...opts, lastWateredAt: recent }).pumpSeconds).toBe(0);

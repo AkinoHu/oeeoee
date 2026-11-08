@@ -1,4 +1,5 @@
 /** Downsampling of telemetry rows into fixed time buckets for charts. Pure, client-safe. */
+import { localHour } from "@/lib/vitals";
 
 export type BucketMode = "avg" | "max" | "any" | "sum";
 
@@ -43,6 +44,33 @@ export function bucketize<T extends { recordedAt: Date }>(
         return sum / counts[i];
     }
   });
+}
+
+/** Runs of consecutive non-null indices. Runs of one are lone points (drawn as dots). */
+export function seriesRuns(values: readonly (number | null)[]): number[][] {
+  const runs: number[][] = [];
+  let run: number[] = [];
+  values.forEach((v, i) => {
+    if (v === null) {
+      if (run.length) runs.push(run);
+      run = [];
+    } else run.push(i);
+  });
+  if (run.length) runs.push(run);
+  return runs;
+}
+
+/**
+ * Whole-hour instants in [start, end) whose local hour in `timeZone` is a
+ * multiple of `stepHours` (24 = once a day). Floors the local hour, so in
+ * :30 / :45 zones the tick lands just after local midnight, on the day it names.
+ */
+export function timeTicks(start: number, end: number, stepHours: number, timeZone: string): number[] {
+  const out: number[] = [];
+  for (let t = Math.ceil(start / 3600000) * 3600000; t < end; t += 3600000) {
+    if (Math.floor(localHour(new Date(t), timeZone)) % stepHours === 0) out.push(t);
+  }
+  return out;
 }
 
 export function seriesStats(values: readonly (number | null)[]) {

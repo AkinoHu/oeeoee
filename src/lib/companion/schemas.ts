@@ -21,7 +21,9 @@ const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM (24h)");
 /** ISO-8601 string, or a Unix timestamp in seconds or milliseconds. */
 const timestamp = z
   .union([z.iso.datetime({ offset: true }), z.number().int().positive()])
-  .transform((v) => (typeof v === "number" ? new Date(v < 1e12 ? v * 1000 : v) : new Date(v)));
+  .transform((v) => (typeof v === "number" ? new Date(v < 1e12 ? v * 1000 : v) : new Date(v)))
+  // Huge numbers pass `.int()` but are past the Date range (Invalid Date).
+  .refine((d) => !Number.isNaN(d.getTime()), { message: "Timestamp out of range" });
 
 // ── Device API ───────────────────────────────────────────────
 
@@ -51,9 +53,22 @@ const deviceMeta = {
   timezone: timeZone.optional(),
 };
 
-/** Either `{ readings: [...] }` (batch, ≤ 500) or a single reading object. */
+/**
+ * Either `{ readings: [...] }` (batch, ≤ 500) or a single reading object.
+ * In a batch of more than one reading each needs `recordedAt` (they'd all be
+ * stamped "now" otherwise, and the newest one couldn't be told apart).
+ */
 export const telemetryBodySchema = z.union([
-  z.object({ readings: z.array(telemetryReadingSchema).min(1).max(500), ...deviceMeta }),
+  z.object({
+    readings: z
+      .array(telemetryReadingSchema)
+      .min(1)
+      .max(500)
+      .refine((rs) => rs.length === 1 || rs.every((r) => r.recordedAt !== undefined), {
+        message: "Every reading in a batch needs recordedAt",
+      }),
+    ...deviceMeta,
+  }),
   z.intersection(telemetryReadingSchema, z.object(deviceMeta)),
 ]);
 export type TelemetryBody = z.infer<typeof telemetryBodySchema>;

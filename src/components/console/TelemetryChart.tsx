@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { Locale } from "@/i18n/config";
 import { localeTag } from "@/lib/companion/format";
-import { localHour } from "@/lib/vitals";
+import { seriesRuns, timeTicks } from "@/lib/companion/series";
 
 export interface TelemetryChartProps {
   title: string;
@@ -100,21 +100,14 @@ export function TelemetryChart(props: TelemetryChartProps) {
     [locale, timeZone, span],
   );
 
-  // Line path, split at gaps.
-  const line = useMemo(() => {
-    let l = "";
-    let seg: [number, number][] = [];
-    const flush = () => {
-      if (seg.length === 0) return;
-      l += seg.map(([px, py], i) => `${i ? "L" : "M"}${px.toFixed(1)},${py.toFixed(1)}`).join("");
-      seg = [];
-    };
-    values.forEach((v, i) => {
-      if (v === null) flush();
-      else seg.push([x(i), y(v)]);
-    });
-    flush();
-    return l;
+  // Line path, split at gaps; lone points (no neighbour to join) become dots.
+  const { line, dots } = useMemo(() => {
+    const runs = seriesRuns(values);
+    const l = runs
+      .filter((run) => run.length > 1)
+      .map((run) => run.map((i, k) => `${k ? "L" : "M"}${x(i).toFixed(1)},${y(values[i]!).toFixed(1)}`).join(""))
+      .join("");
+    return { line: l, dots: runs.filter((run) => run.length === 1).map(([i]) => i) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values, width, lo, hi]);
 
@@ -126,10 +119,7 @@ export function TelemetryChart(props: TelemetryChartProps) {
     const step = span > 2 * 86400000 ? 24 : 6;
     const dayFmt = new Intl.DateTimeFormat(localeTag(locale), { timeZone, weekday: "short" });
     const hourFmt = new Intl.DateTimeFormat(localeTag(locale), { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-    for (let t = Math.ceil(start / 3600000) * 3600000; t < end; t += 3600000) {
-      const h = Math.round(localHour(new Date(t), timeZone));
-      if (h % step === 0) out.push({ t, label: step === 24 ? dayFmt.format(t) : hourFmt.format(t) });
-    }
+    for (const t of timeTicks(start, end, step, timeZone)) out.push({ t, label: step === 24 ? dayFmt.format(t) : hourFmt.format(t) });
     return out;
   }, [start, end, span, locale, timeZone]);
   const xOf = (t: number) => M.left + ((t - start) / span) * innerW;
@@ -224,6 +214,9 @@ export function TelemetryChart(props: TelemetryChartProps) {
           <line x1={M.left} x2={width - M.right} y1={baseline} y2={baseline} stroke="var(--color-line-strong)" />
           {/* Data */}
           <path d={line} fill="none" stroke="var(--color-leaf-300)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+          {dots.map((i) => (
+            <circle key={i} cx={x(i)} cy={y(values[i]!)} r={2.5} fill="var(--color-leaf-300)" />
+          ))}
           {markers?.map((m, i) =>
             m ? <circle key={i} cx={x(i)} cy={baseline - 5} r={3.5} fill="var(--color-sky)" stroke="var(--color-surface)" strokeWidth={2} /> : null,
           )}

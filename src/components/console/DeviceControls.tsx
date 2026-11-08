@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
-import { useActionState, useState, useTransition } from "react";
+import { startTransition, useActionState, useState, useTransition } from "react";
 import { deleteDevice, rotateDeviceToken, updateDevice, type FormState, type TokenReveal as Reveal } from "@/app/console/actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/primitives";
@@ -24,7 +24,17 @@ export function DeviceSettingsForm({
   const [potSize, setPotSize] = useState(device.potSize ?? "M");
 
   return (
-    <form action={action} className="space-y-3" noValidate>
+    <form
+      // onSubmit, not `action`: React's post-action form reset would snap the
+      // controlled <select>s back to their first-render values.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        startTransition(() => action(fd));
+      }}
+      className="space-y-3"
+      noValidate
+    >
       <div>
         <Label htmlFor="ds-name">{t("devices.name")}</Label>
         <Input id="ds-name" name="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} required />
