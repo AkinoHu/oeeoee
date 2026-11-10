@@ -1,0 +1,384 @@
+<!doctype html>
+<!--
+  3D concept sketches for the pot's form (review material, not part of the site).
+  Forms: ?c=pod | lantern | moon | buddy | bare, add &night=1 for the lamp-lit shot.
+  How to render: see scripts/concepts/render.mjs.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>html,body{margin:0;background:#f4ecdd}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const q = new URLSearchParams(location.search);
+const concept = q.get('c') || 'pod';
+const night = q.get('night') === '1';
+const W = +(q.get('w') || 1000), H = +(q.get('h') || 1250);
+const yaw = +(q.get('yaw') || 0);
+
+// ───────── renderer / scene ─────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = night ? 1.15 : 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = night ? THREE.PCFSoftShadowMap : THREE.VSMShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const BG = night ? '#1c1814' : '#f2dfc0';
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(BG);
+const pm = new THREE.PMREMGenerator(renderer);
+scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = night ? 0.16 : 0.5;
+
+// ───────── materials ─────────
+const M = {
+  ceramic: new THREE.MeshPhysicalMaterial({ color: '#f3eee4', roughness: 0.46, clearcoat: 0.3, clearcoatRoughness: 0.45 }),
+  inner: new THREE.MeshStandardMaterial({ color: '#efe4d0', roughness: 0.8, side: THREE.DoubleSide }),
+  wood: new THREE.MeshStandardMaterial({ color: '#c8a070', roughness: 0.62 }),
+  woodDark: new THREE.MeshStandardMaterial({ color: '#a97c4c', roughness: 0.6 }),
+  leather: new THREE.MeshStandardMaterial({ color: '#a8603a', roughness: 0.7 }),
+  soil: new THREE.MeshStandardMaterial({ color: '#3a2b1f', roughness: 1 }),
+  lens: new THREE.MeshPhysicalMaterial({ color: '#0d1114', roughness: 0.08, clearcoat: 1 }),
+  stem: new THREE.MeshStandardMaterial({ color: '#5c9a55', roughness: 0.7 }),
+  glow: (k = 4, c = '#ffd9a0') => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: true }),
+  paper: new THREE.MeshStandardMaterial({ color: '#fff3d6', roughness: 0.9, emissive: new THREE.Color('#ffcf85'), emissiveIntensity: night ? 0.7 : 1.5 }),
+};
+const eyeMat = M.glow(night ? 4.5 : 2.4, '#ff9a2a');
+
+function shadowed(m, cast = true, receive = true) { m.castShadow = cast; m.receiveShadow = receive; return m; }
+function mesh(geo, mat, cast = true, receive = true) { return shadowed(new THREE.Mesh(geo, mat), cast, receive); }
+
+// ───────── helpers ─────────
+function lathe(profile, seg = 96) {
+  const g = new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(Math.max(r, 0.0001), y)), seg);
+  g.computeVertexNormals();
+  return g;
+}
+/** Points along a 2D path built with a callback. */
+function path2(build, n = 80) {
+  const p = new THREE.Path(); build(p);
+  return p.getPoints(n).map(v => [v.x, v.y]);
+}
+/** A pot: soft cylinder with a rounded bottom edge, wall thickness and soil. Returns group + soil height. */
+function makePot({ R = 8, Hh = 12, taper = 0.9, round = 0.3, p = 2.6, wall = 0.6, mat = M.ceramic, soilDrop = 1.1 } = {}) {
+  const g = new THREE.Group();
+  const k = Hh * round;
+  const rAt = (y) => {
+    const wallR = R * (taper + (1 - taper) * Math.sin((Math.PI / 2) * Math.min(1, Math.max(0, y / Hh))));
+    const c = y < k ? Math.pow(1 - Math.pow(1 - Math.max(0, y) / k, p), 1 / p) : 1;
+    return wallR * c;
+  };
+  const prof = [[0, 0]], N = 110;
+  for (let i = 1; i <= N; i++) { const y = (Hh - 0.3) * Math.pow(i / N, 2); prof.push([rAt(y), y]); }
+  prof.push([R - 0.03, Hh - 0.14], [R - 0.16, Hh], [R - wall + 0.16, Hh], [R - wall, Hh - 0.16], [R - wall - 0.1, Hh - soilDrop - 0.4]);
+  g.add(mesh(lathe(prof), mat));
+  const soil = mesh(new THREE.CircleGeometry(R - wall - 0.08, 64), M.soil, false, true);
+  soil.rotation.x = -Math.PI / 2; soil.position.y = Hh - soilDrop;
+  g.add(soil);
+  g.userData = { soilY: Hh - soilDrop, R, Hh, rAt };
+  return g;
+}
+function foot(r, h = 0.9, mat = M.wood) {
+  const prof = path2(p => { p.moveTo(0, 0); p.lineTo(r - 0.25, 0); p.quadraticCurveTo(r, 0, r, 0.25); p.lineTo(r, h - 0.2); p.quadraticCurveTo(r, h, r - 0.2, h); p.lineTo(0, h); }, 30);
+  return mesh(lathe(prof, 64), mat);
+}
+/** Two glowing capsule eyes on a surface of revolution of radius r at height y. */
+function addEyes(g, r, y, { s = 1, gap = 0.3, tilt = 0 } = {}) {
+  for (const sgn of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.CapsuleGeometry(0.5 * s, 0.85 * s, 8, 24), eyeMat);
+    const a = sgn * gap;
+    eye.position.set((r + 0.02) * Math.sin(a), y, (r + 0.02) * Math.cos(a));
+    eye.rotation.y = a; eye.rotation.x = tilt;
+    eye.scale.z = 0.3;
+    g.add(eye);
+  }
+}
+function lensAt(g, x, y, z, s = 1, look = new THREE.Vector3(0, -1, 0.4)) {
+  const grp = new THREE.Group();
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.62 * s, 0.62 * s, 0.3 * s, 32), new THREE.MeshStandardMaterial({ color: '#2a2622', roughness: 0.4 }));
+  const glass = new THREE.Mesh(new THREE.SphereGeometry(0.45 * s, 24, 16), M.lens);
+  glass.scale.y = 0.45; glass.position.y = 0.12 * s;
+  grp.add(ring, glass);
+  grp.position.set(x, y, z);
+  grp.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), look.clone().normalize());
+  g.add(grp);
+  return grp;
+}
+
+// ───────── plant ─────────
+function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+function leafGeo(L, Wd, bend = 0.9, fold = 0.22, shape = 0.75) {
+  const nu = 8, nv = 18, pos = [], col = [], idx = [];
+  const dark = new THREE.Color('#1f5c36'), light = new THREE.Color('#58a868');
+  let cy = 0, cz = 0;
+  for (let j = 0; j <= nv; j++) {
+    const v = j / nv, a = bend * Math.pow(v, 1.4);
+    if (j > 0) { cy += Math.cos(a) * L / nv; cz += Math.sin(a) * L / nv; }
+    const wv = Wd * 0.5 * Math.pow(Math.sin(Math.PI * Math.pow(v, shape)), 0.75);
+    const ny = -Math.sin(a), nz = Math.cos(a);
+    for (let i = 0; i <= nu; i++) {
+      const u = (i / nu) * 2 - 1;
+      const lift = fold * Math.abs(u) * wv;
+      pos.push(u * wv, cy + ny * lift, cz + nz * lift);
+      const c = dark.clone().lerp(light, 0.25 + 0.6 * v - 0.25 * (1 - Math.abs(u)));
+      col.push(c.r, c.g, c.b);
+    }
+  }
+  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+    const a0 = j * (nu + 1) + i, b0 = a0 + 1, c0 = a0 + nu + 1, d0 = c0 + 1;
+    idx.push(a0, b0, c0, b0, d0, c0);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+const leafMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, side: THREE.DoubleSide });
+/** Bushy foliage plant: arching petioles, pointed-oval leaves. */
+function makePlant({ h = 18, spread = 6.5, n = 13, seed = 7, leaf = 1 } = {}) {
+  const g = new THREE.Group(), rnd = rng(seed);
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);                               // 0 = centre/upright, 1 = outer/low
+    const az = i * 2.39996 + rnd() * 0.5;
+    const out = spread * (0.12 + 0.88 * Math.pow(t, 0.8)) * (0.85 + rnd() * 0.3);
+    const top = h * (0.66 - 0.46 * t) * (0.9 + rnd() * 0.2);
+    const dir = new THREE.Vector3(Math.sin(az), 0, Math.cos(az));
+    const p1 = new THREE.Vector3(0, 0, 0), p3 = dir.clone().multiplyScalar(out).setY(top);
+    const p2 = dir.clone().multiplyScalar(out * 0.25).setY(top * 0.8);
+    const curve = new THREE.QuadraticBezierCurve3(p1, p2, p3);
+    g.add(mesh(new THREE.TubeGeometry(curve, 16, 0.16, 6), M.stem, true, false));
+    const L = (6.6 + rnd() * 2.4) * leaf * (1 - 0.22 * t), Wd = L * (0.52 + rnd() * 0.1);
+    const lf = mesh(leafGeo(L, Wd, 0.5 + 0.7 * t + rnd() * 0.3, 0.2), leafMat);
+    lf.position.copy(p3);
+    lf.rotation.order = 'YXZ';
+    lf.rotation.y = az; lf.rotation.x = 0.12 + 0.95 * t + (rnd() - 0.5) * 0.25; lf.rotation.z = (rnd() - 0.5) * 0.5;
+    g.add(lf);
+  }
+  return g;
+}
+
+// ───────── light helpers ─────────
+function lampLight(parent, pos, target, { intensity = night ? 2600 : 700, angle = 0.62, color = '#ffd39a' } = {}) {
+  const s = new THREE.SpotLight(color, intensity, 0, angle, 0.7, 2);
+  s.position.copy(pos); s.target.position.copy(target);
+  s.castShadow = night; s.shadow.mapSize.set(2048, 2048); s.shadow.radius = 4; s.shadow.bias = -0.002; s.shadow.normalBias = 0.05;
+  parent.add(s, s.target);
+  return s;
+}
+function beam(parent, top, rTop, rBot, len, opacity = night ? 0.2 : 0.07) {
+  const geo = new THREE.CylinderGeometry(rTop, rBot, len, 48, 1, true);
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+    uniforms: { o: { value: opacity } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: 'varying vec2 vUv; uniform float o; void main(){ float a = pow(vUv.y, 1.6) * o; gl_FragColor = vec4(1.0, 0.82, 0.55, a); }',
+  });
+  const m = new THREE.Mesh(geo, mat); m.position.copy(top); m.position.y -= len / 2;
+  parent.add(m);
+}
+
+// ───────── concepts ─────────
+const root = new THREE.Group(); scene.add(root);
+let HEIGHT = 40, lookY = 18;
+
+function buildPod() {
+  // An egg: the lower third is the pot, the upper shell wraps behind and over the plant.
+  const Rm = 11.2, yc = 14.5, aL = 17.2, aU = 25.5, rimY = 12.5, topOpen = 35.5, alpha0 = 1.22, wall = 0.75;
+  const Hegg = yc + aU;
+  const R = (y) => y < yc ? Rm * Math.sqrt(Math.max(0, 1 - ((yc - y) / aL) ** 2)) : Rm * Math.sqrt(Math.max(0, 1 - ((y - yc) / aU) ** 2));
+  const g = new THREE.Group();
+  // pot part (full revolve) with inner wall + rim
+  const prof = [[0, 0]];
+  for (let i = 0; i <= 40; i++) { const y = (i / 40) * rimY; prof.push([R(y), y]); }
+  prof.push([R(rimY) - wall, rimY], [R(rimY - 1.4) - wall, rimY - 1.4]);
+  g.add(mesh(lathe(prof), M.ceramic));
+  const soilY = rimY - 1.0;
+  const soil = mesh(new THREE.CircleGeometry(R(soilY) - wall, 64), M.soil, false, true); soil.rotation.x = -Math.PI / 2; soil.position.y = soilY; g.add(soil);
+  // shell
+  const alpha = (y) => { const s = (y - rimY) / (topOpen - rimY); return s >= 1 ? 0 : alpha0 * Math.pow(1 - Math.pow(Math.max(0, s), 2.3), 1 / 2.3); };
+  const ny = 70, nt = 96;
+  const build = (off, flip) => {
+    const pos = [], idx = [];
+    for (let j = 0; j <= ny; j++) {
+      const y = rimY + (j / ny) * (Hegg - 0.02 - rimY), al = alpha(y), r = Math.max(0.001, R(y) - off * Math.min(1, (Hegg - y) / 2 + 0.2));
+      for (let i = 0; i <= nt; i++) { const ph = al + (i / nt) * (2 * Math.PI - 2 * al); pos.push(r * Math.sin(ph), y - (off ? Math.min(off, (y - rimY) * 0) : 0), r * Math.cos(ph)); }
+    }
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nt; i++) {
+      const a = j * (nt + 1) + i, b = a + 1, c = a + nt + 1, d = c + 1;
+      if (flip) idx.push(a, c, b, b, c, d); else idx.push(a, b, c, b, d, c);
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals(); return geo;
+  };
+  const outer = mesh(build(0, false), M.ceramic); outer.material = M.ceramic.clone(); outer.material.side = THREE.DoubleSide; g.add(outer);
+  g.add(mesh(build(wall, true), M.inner, false, true));
+  // edge bead along the opening
+  const edgePts = [];
+  for (let j = 0; j <= 60; j++) { const y = rimY + (j / 60) * (topOpen - rimY), al = alpha(y), r = R(y) - wall / 2; edgePts.push(new THREE.Vector3(r * Math.sin(al), y, r * Math.cos(al))); }
+  const left = edgePts.map(p => new THREE.Vector3(-p.x, p.y, p.z)).reverse();
+  const edge = new THREE.CatmullRomCurve3([...edgePts, ...left.slice(1)]);
+  g.add(mesh(new THREE.TubeGeometry(edge, 200, wall / 2 + 0.03, 10), M.ceramic));
+  // lamp + camera under the crown
+  const lampY = 33.2;
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(3.6, 48), M.glow(night ? 6 : 3)); disc.rotation.x = Math.PI / 2; disc.position.set(0, lampY, -0.6); g.add(disc);
+  lampLight(g, new THREE.Vector3(0, lampY - 0.3, -0.6), new THREE.Vector3(0, soilY, 0.5), { angle: 0.75 });
+  beam(g, new THREE.Vector3(0, lampY, -0.6), 3.4, 8.2, lampY - soilY - 1);
+  lensAt(g, 0, lampY + 0.9, 4.2, 0.8, new THREE.Vector3(0, -1, 0.55));
+  // face
+  addEyes(g, R(6.6), 6.6, { gap: 0.27, tilt: -0.22 });
+  // plant + foot
+  const plant = makePlant({ h: 19, spread: 6.6, n: 15, seed: 11 }); plant.position.y = soilY; g.add(plant);
+  const f = foot(R(0) + 0.5, 0.9); f.position.y = -0.9; g.add(f);
+  g.position.y = 0.9;
+  HEIGHT = Hegg + 1; lookY = 20;
+  return g;
+}
+
+function buildLantern() {
+  const g = new THREE.Group();
+  const pot = makePot({ R: 8, Hh: 11.5, taper: 0.9 }); g.add(pot);
+  const rimY = 11.5, capY = 35;
+  // three wooden posts, front left open
+  for (const deg of [112, -112, 180]) {
+    const a = deg * Math.PI / 180, r = 7.55;
+    const post = mesh(new THREE.CylinderGeometry(0.34, 0.34, capY - rimY + 0.6, 16), M.wood);
+    post.position.set(r * Math.sin(a), (capY + rimY) / 2, r * Math.cos(a)); g.add(post);
+    const sock = mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.9, 16), M.woodDark); sock.position.set(r * Math.sin(a), rimY + 0.35, r * Math.cos(a)); g.add(sock);
+  }
+  // cap: shallow dome with the lamp underneath
+  const capProf = path2(p => { p.moveTo(0, 3.1); p.bezierCurveTo(3.5, 3.1, 7.6, 2.2, 8.6, 0.5); p.quadraticCurveTo(8.75, 0, 8.3, 0); p.lineTo(0, 0); }, 50);
+  const cap = mesh(lathe(capProf), M.ceramic); cap.position.y = capY; g.add(cap);
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(5.6, 48), M.glow(night ? 6 : 3)); disc.rotation.x = Math.PI / 2; disc.position.y = capY - 0.03; g.add(disc);
+  lampLight(g, new THREE.Vector3(0, capY - 0.4, 0), new THREE.Vector3(0, rimY, 0), { angle: 0.6 });
+  beam(g, new THREE.Vector3(0, capY - 0.1, 0), 5.4, 8.6, capY - rimY - 1);
+  lensAt(g, 0, capY + 0.05, 7.2, 0.7, new THREE.Vector3(0, -1, 0.2));
+  // leather handle over the cap
+  const hc = new THREE.CatmullRomCurve3([[-7.4, capY + 1.2, 0], [-6.6, capY + 6.2, 0], [0, capY + 9.4, 0], [6.6, capY + 6.2, 0], [7.4, capY + 1.2, 0]].map(p => new THREE.Vector3(...p)));
+  const handle = mesh(new THREE.TubeGeometry(hc, 60, 0.34, 10), M.leather); handle.scale.z = 2.2; g.add(handle);
+  for (const sx of [-1, 1]) { const stud = mesh(new THREE.SphereGeometry(0.5, 16, 12), M.woodDark); stud.position.set(sx * 7.4, capY + 1.3, 0.2); g.add(stud); }
+  addEyes(g, pot.userData.rAt(6.4) + 0.05, 6.4, { gap: 0.3 });
+  const plant = makePlant({ h: 20, spread: 6.6, n: 15, seed: 5 }); plant.position.y = pot.userData.soilY; g.add(plant);
+  const f = foot(6.2, 1.3); f.position.y = -0.8; g.add(f); g.position.y = 0.8;
+  HEIGHT = capY + 11; lookY = 21;
+  return g;
+}
+
+function buildMoon() {
+  const g = new THREE.Group();
+  const pot = makePot({ R: 9.6, Hh: 9.2, taper: 0.86, round: 0.92, p: 2.1 }); g.add(pot);
+  const Rr = 14.5, cy = 9 + 13.2, cz = -2.4;
+  const ring = mesh(new THREE.TorusGeometry(Rr, 0.72, 20, 160), M.wood); ring.position.set(0, cy, cz); ring.scale.z = 1.5; g.add(ring);
+  // light strip on the inside of the hoop (upper three quarters)
+  const strip = new THREE.Mesh(new THREE.TorusGeometry(Rr - 0.66, 0.2, 10, 160, Math.PI * 1.5), M.glow(night ? 7 : 3.4));
+  strip.rotation.z = -Math.PI * 0.25; strip.position.set(0, cy, cz + 0.15); g.add(strip);
+  for (const [a, k] of [[0, 1], [0.9, 0.7], [-0.9, 0.7]]) {
+    const p = new THREE.Vector3(Math.sin(a) * (Rr - 1.2), cy + Math.cos(a) * (Rr - 1.2), cz);
+    const sl = lampLight(g, p, new THREE.Vector3(0, 11, 0), { intensity: (night ? 1500 : 380) * k, angle: 0.8 }); sl.castShadow = night && a === 0;
+  }
+  lensAt(g, 0, cy + Rr - 0.85, cz + 0.2, 0.75, new THREE.Vector3(0, -1, 0.35));
+  addEyes(g, pot.userData.rAt(5.6) + 0.02, 5.6, { s: 0.9, gap: 0.24, tilt: -0.2 });
+  const plant = makePlant({ h: 19, spread: 7, n: 15, seed: 23 }); plant.position.y = pot.userData.soilY; g.add(plant);
+  const f = foot(5.4, 1.5); f.position.y = -0.8; g.add(f); g.position.y = 0.8;
+  HEIGHT = cy + Rr + 2; lookY = 18.5;
+  return g;
+}
+
+function buildBuddy() {
+  const g = new THREE.Group();
+  // shared wooden tray
+  const tray = mesh(new THREE.CylinderGeometry(10.6, 10.2, 1, 64), M.wood); tray.scale.x = 1.62; tray.position.set(2.4, 0.5, 0.8); g.add(tray);
+  const pot = makePot({ R: 7.6, Hh: 12, taper: 0.9 }); pot.position.set(-4.2, 0.9, 0); g.add(pot);
+  const plant = makePlant({ h: 18, spread: 6.4, n: 15, seed: 9 }); plant.position.set(-4.2, 1 + pot.userData.soilY, 0); g.add(plant);
+  // the buddy: a pebble with two eyes, holding a lantern on a rod
+  const bx = 12.2, bz = 2.6, bh = 9.4;
+  const bProf = path2(p => { p.moveTo(0, 0); p.lineTo(2.2, 0); p.bezierCurveTo(3.9, 0, 4.1, 2.6, 3.9, 4.6); p.bezierCurveTo(3.7, 7.6, 2.6, bh, 0, bh); }, 60);
+  const body = mesh(lathe(bProf), M.ceramic); body.position.set(bx, 1, bz); g.add(body);
+  const eyes = new THREE.Group(); eyes.position.set(bx, 1, bz); eyes.rotation.y = -0.32; addEyes(eyes, 3.86, 5.4, { s: 0.92, gap: 0.3, tilt: -0.1 }); g.add(eyes);
+  const tipP = new THREE.Vector3(-3.6, 37, 0.4);
+  const rod = new THREE.QuadraticBezierCurve3(new THREE.Vector3(bx + 1.4, 1 + 6.6, bz - 2.2), new THREE.Vector3(bx - 2, 30, bz - 2), tipP);
+  g.add(mesh(new THREE.TubeGeometry(rod, 60, 0.2, 8), M.woodDark));
+  const hand = mesh(new THREE.SphereGeometry(0.85, 20, 14), M.ceramic); hand.position.set(bx + 1.5, 1 + 6.4, bz - 2.1); g.add(hand);
+  const lanY = tipP.y - 3.6;
+  const str = mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 6), M.woodDark, false, false); str.position.set(tipP.x, tipP.y - 0.8, tipP.z); g.add(str);
+  const lan = new THREE.Mesh(new THREE.SphereGeometry(2.3, 32, 24), M.paper); lan.scale.y = 0.86; lan.position.set(tipP.x, lanY, tipP.z); g.add(lan);
+  for (const sy of [1, -1]) { const c = mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.35, 24), M.woodDark, false, false); c.position.set(tipP.x, lanY + sy * 1.95, tipP.z); g.add(c); }
+  lampLight(g, new THREE.Vector3(tipP.x, lanY - 2.2, tipP.z), new THREE.Vector3(-4.2, 12, 0), { angle: 0.72 });
+  const pl = new THREE.PointLight('#ffd39a', night ? 260 : 120, 0, 2); pl.position.set(tipP.x, lanY, tipP.z + 3); g.add(pl);
+  beam(g, new THREE.Vector3(tipP.x, lanY - 1.9, tipP.z), 1.6, 8, lanY - 15);
+  HEIGHT = 39; lookY = 18.5;
+  return g;
+}
+
+function buildBare() {
+  const g = new THREE.Group();
+  const pot = makePot({ R: 8.6, Hh: 12.6, taper: 0.9 }); g.add(pot);
+  // a thin light line around the rim + a small camera bud at the back
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(8.62, 0.09, 8, 160), M.glow(night ? 6 : 2.2)); rim.rotation.x = Math.PI / 2; rim.position.y = 11.6; g.add(rim);
+  const sc = new THREE.QuadraticBezierCurve3(new THREE.Vector3(5.6, 12.4, -5.4), new THREE.Vector3(6.6, 16.5, -5.6), new THREE.Vector3(5.2, 19.2, -4.4));
+  g.add(mesh(new THREE.TubeGeometry(sc, 24, 0.24, 8), M.ceramic));
+  const bud = mesh(new THREE.SphereGeometry(1.15, 24, 18), M.ceramic); bud.position.set(5.2, 19.6, -4.3); g.add(bud);
+  lensAt(g, 4.75, 19.5, -3.4, 0.7, new THREE.Vector3(-0.45, -0.1, 0.9));
+  addEyes(g, pot.userData.rAt(6.8) + 0.03, 6.8, { gap: 0.29 });
+  const plant = makePlant({ h: 23, spread: 8.2, n: 17, seed: 31, leaf: 1.12 }); plant.position.y = pot.userData.soilY; g.add(plant);
+  const f = foot(6.6, 1.3); f.position.y = -0.8; g.add(f); g.position.y = 0.8;
+  if (night) { const pl = new THREE.PointLight('#ffd39a', 420, 0, 2); pl.position.set(0, 30, 16); g.add(pl); }
+  HEIGHT = 36; lookY = 16.5;
+  return g;
+}
+
+const builders = { pod: buildPod, lantern: buildLantern, moon: buildMoon, buddy: buildBuddy, bare: buildBare };
+root.add((builders[concept] || buildPod)());
+root.rotation.y = yaw;
+
+// ───────── ground, lights, camera ─────────
+if (night) {
+  const gnd = mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshStandardMaterial({ color: '#4a3f33', roughness: 0.95 }), false, true);
+  gnd.rotation.x = -Math.PI / 2; scene.add(gnd);
+  scene.fog = new THREE.Fog(BG, 110, 230);
+  const moonl = new THREE.DirectionalLight('#aebfe0', 0.4); moonl.position.set(-40, 50, 30); scene.add(moonl);
+  scene.add(new THREE.HemisphereLight('#ffd8a8', '#1a1410', 0.25));
+} else {
+  const gnd = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.ShadowMaterial({ opacity: 0.2, color: '#5a4020' }));
+  gnd.rotation.x = -Math.PI / 2; gnd.receiveShadow = true; scene.add(gnd);
+  const key = new THREE.DirectionalLight('#fff4e2', 2.5); key.position.set(-34, 62, 44); key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048); Object.assign(key.shadow.camera, { left: -45, right: 45, top: 60, bottom: -25, near: 10, far: 200 });
+  key.shadow.radius = 9; key.shadow.blurSamples = 20; key.shadow.bias = -0.0006; scene.add(key);
+  const fill = new THREE.DirectionalLight('#ffe9cf', 0.55); fill.position.set(40, 20, 30); scene.add(fill);
+}
+// soft contact shadow
+{
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+  const gr = x.createRadialGradient(128, 128, 10, 128, 128, 128); gr.addColorStop(0, 'rgba(60,40,15,0.55)'); gr.addColorStop(0.6, 'rgba(60,40,15,0.16)'); gr.addColorStop(1, 'rgba(60,40,15,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 256, 256);
+  const cs = new THREE.Mesh(new THREE.PlaneGeometry(concept === 'buddy' ? 52 : 34, 26), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, opacity: night ? 0.5 : 0.8 }));
+  cs.rotation.x = -Math.PI / 2; cs.position.set(concept === 'buddy' ? 2.4 : 0, 0.02, 1.5); scene.add(cs);
+}
+
+const cam = new THREE.PerspectiveCamera(24, W / H, 1, 600);
+const dist = (HEIGHT * 1.42) / (2 * Math.tan((24 * Math.PI / 180) / 2));
+const elev = 0.2;
+cam.position.set(concept === 'buddy' ? 2 : 0, lookY + Math.sin(elev) * dist, Math.cos(elev) * dist);
+cam.lookAt(concept === 'buddy' ? 2 : 0, lookY, 0);
+
+const rt = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, samples: 4 });
+const composer = new EffectComposer(renderer, rt);
+composer.addPass(new RenderPass(scene, cam));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), night ? 0.55 : 0.22, 0.7, 1.6));
+composer.addPass(new OutputPass());
+composer.render(); composer.render();
+window.__done = true;
+</script>
+</body>
+</html>
