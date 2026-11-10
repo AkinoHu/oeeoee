@@ -11,7 +11,7 @@ export function StepHeading({ index, title, aside }: { index: number; title: str
   return (
     <div className="mb-3 flex items-baseline justify-between gap-4">
       <h3 className="flex items-baseline gap-2.5 text-sm font-medium">
-        <span className="font-mono text-xs text-leaf-300">{String(index).padStart(2, "0")}</span>
+        <span className="font-bold tabular-nums text-xs text-leaf-300">{String(index).padStart(2, "0")}</span>
         {title}
       </h3>
       {aside}
@@ -81,7 +81,7 @@ export function SizePicker({
               )}
             </span>
             <span className="mt-0.5 truncate text-xs font-medium text-fg/90 sm:text-sm">{lt(pot.name, locale)}</span>
-            <span className="mt-2 space-y-0.5 font-mono text-[10px] leading-4 text-muted sm:text-[11px]">
+            <span className="mt-2 space-y-0.5 font-bold tabular-nums text-[10px] leading-4 text-muted sm:text-[11px]">
               <span className="block">{t("studio.size.dims", { d: pot.dims.diameterCm, h: pot.dims.heightCm })}</span>
               <span className="block">{t("studio.size.reservoir", { l: (pot.reservoirMl / 1000).toLocaleString(locale, { maximumFractionDigits: 1 }) })}</span>
               <span className="block">{t("studio.size.screen", { inch: pot.screenInch })}</span>

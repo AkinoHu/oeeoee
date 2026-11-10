@@ -6,15 +6,15 @@ export function Container({ className, ...props }: ComponentProps<"div">) {
 }
 
 export function Card({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("rounded-2xl border border-line bg-surface", className)} {...props} />;
+  return <div className={cn("rounded-3xl border border-line bg-surface shadow-soft", className)} {...props} />;
 }
 
 type BadgeTone = "leaf" | "sky" | "sun" | "rose" | "neutral";
 const badgeTones: Record<BadgeTone, string> = {
-  leaf: "bg-leaf-300/12 text-leaf-200 border-leaf-300/25",
-  sky: "bg-sky/12 text-sky border-sky/25",
-  sun: "bg-sun/12 text-sun border-sun/25",
-  rose: "bg-rose/12 text-rose border-rose/25",
+  leaf: "bg-leaf-300/10 text-leaf-200 border-leaf-300/20",
+  sky: "bg-sky/10 text-sky border-sky/20",
+  sun: "bg-sun/10 text-sun border-sun/25",
+  rose: "bg-rose/10 text-rose border-rose/20",
   neutral: "bg-surface-2 text-muted border-line",
 };
 
@@ -22,7 +22,7 @@ export function Badge({ tone = "neutral", className, ...props }: ComponentProps<
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold",
         badgeTones[tone],
         className,
       )}
@@ -32,10 +32,10 @@ export function Badge({ tone = "neutral", className, ...props }: ComponentProps<
 }
 
 const field =
-  "w-full rounded-xl border border-line bg-surface-2 px-3.5 py-2.5 text-sm text-fg placeholder:text-faint outline-none transition focus:border-leaf-300/60 focus:ring-2 focus:ring-leaf-300/20 disabled:opacity-60";
+  "w-full rounded-2xl border border-line-strong/70 bg-surface px-4 py-2.5 text-sm text-fg placeholder:text-faint outline-none transition focus:border-leaf-300/60 focus:ring-4 focus:ring-leaf-300/15 disabled:opacity-60";
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
-  return <input className={cn(field, "h-10 py-0", className)} {...props} />;
+  return <input className={cn(field, "h-11 py-0", className)} {...props} />;
 }
 
 export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
@@ -43,11 +43,11 @@ export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
 }
 
 export function Select({ className, ...props }: ComponentProps<"select">) {
-  return <select className={cn(field, "h-10 py-0 pr-8", className)} {...props} />;
+  return <select className={cn(field, "h-11 py-0 pr-8", className)} {...props} />;
 }
 
 export function Label({ className, ...props }: ComponentProps<"label">) {
-  return <label className={cn("mb-1.5 block text-sm font-medium text-fg/90", className)} {...props} />;
+  return <label className={cn("mb-1.5 block text-sm font-bold text-fg/90", className)} {...props} />;
 }
 
 export function SectionHeading({
@@ -66,7 +66,7 @@ export function SectionHeading({
   return (
     <div className={cn("max-w-2xl", align === "center" && "mx-auto text-center", className)}>
       {eyebrow && <p className="eyebrow mb-3">{eyebrow}</p>}
-      <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{title}</h2>
+      <h2 className="text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">{title}</h2>
       {description && <p className="mt-4 text-base text-muted text-pretty sm:text-lg">{description}</p>}
     </div>
   );

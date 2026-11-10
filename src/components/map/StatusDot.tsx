@@ -8,8 +8,8 @@ export function StatusDot({ mode, className }: { mode: SalesMode | null; classNa
       aria-hidden
       className={cn(
         "inline-block size-2 shrink-0 rounded-full",
-        mode === "full" && "bg-leaf-300 shadow-[0_0_0_3px_rgb(182_243_107/0.18),0_0_12px_rgb(182_243_107/0.9)]",
-        mode === "pot_only" && "bg-leaf-400/90 shadow-[0_0_8px_rgb(155_227_74/0.55)]",
+        mode === "full" && "bg-leaf-300 shadow-[0_0_0_3px_rgb(var(--accent)/0.18),0_0_12px_rgb(var(--accent)/0.9)]",
+        mode === "pot_only" && "bg-leaf-400/90 shadow-[0_0_8px_rgb(var(--glow)/0.55)]",
         mode === "coming_soon" && "bg-leaf-600/70",
         mode === null && "bg-faint/60",
         className,

@@ -143,7 +143,7 @@ export default async function CheckoutSuccessPage({ searchParams }: PageProps<"/
     <section className="relative overflow-hidden">
       {/* A canceled checkout charged nothing ("start a new checkout anytime"): keep the cart. */}
       {!canceled && <ClearCartOnMount checkoutId={order.stripeSessionId ?? order.id} />}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_50%_60%_at_50%_0%,rgb(155_227_74/0.16),transparent_70%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_50%_60%_at_50%_0%,rgb(var(--glow)/0.16),transparent_70%)]" />
       <Container className="relative max-w-5xl py-12 sm:py-16">
         <div className="text-center">
           <span
@@ -171,7 +171,7 @@ export default async function CheckoutSuccessPage({ searchParams }: PageProps<"/
 
         <div className="mt-10 grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <Card className="relative flex items-center justify-center overflow-hidden p-6">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_40%,rgb(155_227_74/0.12),transparent_70%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_40%,rgb(var(--glow)/0.12),transparent_70%)]" />
             {hero && (
               <div className="relative w-full max-w-[280px]">
                 <PotPreview size={hero.size} finish={hero.finish} plantId={heroPlantId} expression={paid ? "love" : "curious"} />
@@ -232,7 +232,7 @@ export default async function CheckoutSuccessPage({ searchParams }: PageProps<"/
             <ol className="mt-5 grid gap-4 sm:grid-cols-3">
               {steps.map((text, i) => (
                 <li key={i} className="rounded-2xl border border-line bg-surface-2/40 p-4">
-                  <span className="font-mono text-xs text-leaf-300">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="font-bold tabular-nums text-xs text-leaf-300">{String(i + 1).padStart(2, "0")}</span>
                   <p className="mt-2 text-sm text-pretty text-fg/90">{text}</p>
                 </li>
               ))}

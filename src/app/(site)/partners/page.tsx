@@ -41,7 +41,7 @@ export default async function PartnersPage({ searchParams }: PageProps<"/partner
       <PlantsSection />
       <FaqSection />
       <Section id="apply" className="relative overflow-hidden border-t border-line/60">
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[40rem] bg-[radial-gradient(ellipse_at_bottom,rgb(155_227_74/0.08),transparent_65%)]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[40rem] bg-[radial-gradient(ellipse_at_bottom,rgb(var(--glow)/0.08),transparent_65%)]" />
         <div className="relative grid gap-12 lg:grid-cols-[1fr_1.5fr] lg:gap-16">
           <ApplyIntro />
           <Card className="p-5 sm:p-8">

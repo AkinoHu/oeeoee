@@ -163,7 +163,7 @@ export function PlantQuiz({
               </span>
             ))}
           </div>
-          <p className="shrink-0 font-mono text-xs text-muted" aria-live="polite">
+          <p className="shrink-0 font-bold tabular-nums text-xs text-muted" aria-live="polite">
             {done ? t("quiz.results.label") : t("quiz.progress", { n: step + 1, total: QUESTIONS.length })}
           </p>
         </div>
@@ -245,7 +245,7 @@ export function PlantQuiz({
                             <PlantArt plantId={rec.plant.id} width={64} />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="font-mono text-[10px] tracking-widest text-leaf-300 uppercase">
+                            <p className="font-bold tabular-nums text-[10px] tracking-wide text-leaf-300 uppercase">
                               {i === 0 ? t("quiz.results.top") : `#${i + 1}`}
                             </p>
                             <p className="mt-0.5 font-semibold">{lt(rec.plant.name, locale)}</p>
@@ -258,7 +258,7 @@ export function PlantQuiz({
                                   transition={{ delay: 0.25 + i * 0.09, duration: 0.6, ease: "easeOut" }}
                                 />
                               </span>
-                              <span className="font-mono text-[10px] text-muted">
+                              <span className="font-bold tabular-nums text-[10px] text-muted">
                                 {t("quiz.results.match", { score: Math.round(rec.score) })}
                               </span>
                             </div>

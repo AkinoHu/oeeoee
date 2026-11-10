@@ -7,6 +7,7 @@ This repo contains the website (world-map storefront), the account system and
 the web platform ("中台") that hosts the companion's brain.
 
 - Product & business plan: [`docs/PLAN.md`](docs/PLAN.md)
+- Visual system: [`docs/DESIGN.md`](docs/DESIGN.md)
 - Task breakdown: [`docs/TASKS.md`](docs/TASKS.md)
 - Deploying to Railway, with oeeoee.com DNS on Cloudflare: [`docs/DEPLOY.md`](docs/DEPLOY.md)
 - Pot ↔ platform device API (for firmware): [`docs/DEVICE_API.md`](docs/DEVICE_API.md)

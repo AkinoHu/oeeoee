@@ -23,6 +23,7 @@ import Link from "next/link";
 import { PotPreview } from "@/components/pot/PotPreview";
 import { ButtonLink } from "@/components/ui/button";
 import { Container, SectionHeading } from "@/components/ui/primitives";
+import { SpeechBubble } from "@/components/ui/speech-bubble";
 import { getT, type Translator } from "@/i18n/server";
 import { cn } from "@/lib/utils";
 import { CompanionDemo } from "./CompanionDemo";
@@ -83,7 +84,7 @@ function AbilityCard({
         className,
       )}
     >
-      <div className="relative min-h-[22rem] border-b border-line/70 bg-[radial-gradient(ellipse_at_50%_30%,rgb(155_227_74/0.09),transparent_65%)]">
+      <div className="relative min-h-[22rem] border-b border-line/70 bg-[radial-gradient(ellipse_at_50%_30%,rgb(var(--glow)/0.09),transparent_65%)]">
         <div aria-hidden className="bg-grid absolute inset-0 opacity-50 [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" />
         {visual}
       </div>
@@ -182,7 +183,7 @@ function Vitals({ t }: { t: T }) {
               ] as const
             ).map(([title, body, Icon]) => (
               <li key={title} className="relative flex items-center gap-4">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf-300/25 bg-bg text-leaf-300 shadow-[0_0_20px_-6px_rgb(182_243_107/0.6)]">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full border border-leaf-300/25 bg-bg text-leaf-300 shadow-[0_0_20px_-6px_rgb(var(--accent)/0.6)]">
                   <Icon className="size-4" aria-hidden />
                 </span>
                 <span>
@@ -260,7 +261,7 @@ function Ecosystem({ t }: { t: T }) {
               "M650,310 C560,310 570,200 500,200",
             ].map((d, i) => (
               <g key={d}>
-                <path d={d} fill="none" stroke="rgb(182 243 107 / 0.18)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+                <path d={d} fill="none" className="stroke-leaf-300/25" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
                 <path
                   d={d}
                   fill="none"
@@ -289,7 +290,7 @@ function Ecosystem({ t }: { t: T }) {
                 <div aria-hidden className="absolute inset-0 animate-[spin_24s_linear_infinite] rounded-full border border-dashed border-leaf-300/25" />
                 <div aria-hidden className="absolute inset-5 rounded-full border border-leaf-300/10" />
                 <div aria-hidden className="absolute inset-8 rounded-full bg-leaf-300/10 blur-2xl" />
-                <div className="relative grid size-40 place-items-center rounded-full border border-leaf-300/30 bg-surface-2 text-center shadow-[0_0_60px_-10px_rgb(182_243_107/0.5)]">
+                <div className="relative grid size-40 place-items-center rounded-full border border-leaf-300/30 bg-surface-2 text-center shadow-[0_0_60px_-10px_rgb(var(--accent)/0.5)]">
                   <div>
                     <Brain className="mx-auto size-7 text-leaf-300" aria-hidden />
                     <p className="mt-2 text-sm font-semibold">{t("eco.hub")}</p>
@@ -335,10 +336,10 @@ function Steps({ t }: { t: T }) {
                 className="relative h-full rounded-3xl border border-line bg-surface/60 p-6 transition-colors duration-300 hover:border-leaf-300/25 sm:p-7"
               >
                 <div className="flex items-center justify-between">
-                  <span className="relative grid size-12 place-items-center rounded-2xl border border-leaf-300/25 bg-bg text-leaf-300 shadow-[0_0_30px_-8px_rgb(182_243_107/0.5)]">
+                  <span className="relative grid size-12 place-items-center rounded-2xl border border-leaf-300/25 bg-bg text-leaf-300 shadow-[0_0_30px_-8px_rgb(var(--accent)/0.5)]">
                     <s.icon className="size-5" aria-hidden />
                   </span>
-                  <span aria-hidden className="font-mono text-4xl font-semibold text-fg/10 tabular-nums">
+                  <span aria-hidden className="text-4xl font-extrabold text-fg/10 tabular-nums">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                 </div>
@@ -360,30 +361,38 @@ function Closing({ t }: { t: T }) {
     <section className="relative pt-8 pb-24 sm:pb-32">
       <Container>
         <Reveal>
-          <div className="relative overflow-hidden rounded-[2rem] border border-leaf-300/20 bg-surface px-6 py-16 text-center sm:px-12 sm:py-20">
-            <div
-              aria-hidden
-              className="absolute inset-0 opacity-60 [background-image:radial-gradient(rgb(150_172_160/0.35)_1px,transparent_1.2px)] [background-size:14px_14px] [mask-image:radial-gradient(ellipse_at_center,black_10%,transparent_70%)]"
-            />
-            <div aria-hidden className="absolute top-1/2 left-1/2 size-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-leaf-300/15 blur-[90px]" />
-            <div className="relative">
-              <p className="eyebrow">{t("closing.eyebrow")}</p>
-              <h2 className="text-gradient mx-auto mt-4 max-w-2xl pb-1 text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-                {t("closing.title")}
-              </h2>
-              <p className="mx-auto mt-5 max-w-xl text-muted text-pretty sm:text-lg">{t("closing.body")}</p>
-              <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-                <ButtonLink href="/#explore" size="lg">
-                  <MapIcon className="size-4" aria-hidden />
-                  {t("closing.cta")}
-                </ButtonLink>
-                <Link
-                  href="/partners"
-                  className="inline-flex h-12 items-center gap-1.5 rounded-2xl px-5 text-sm font-medium text-muted transition hover:text-fg"
-                >
-                  {t("closing.secondary")}
-                  <ArrowRight className="size-4" aria-hidden />
-                </Link>
+          {/* The one night scene on the page: a lamp-lit room where the pot waits up for you. */}
+          <div className="theme-night relative isolate overflow-hidden rounded-[2.5rem] px-6 py-12 shadow-2xl sm:px-12 sm:py-14 lg:px-16">
+            <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+              <div className="lamp-glow absolute top-1/2 right-[-6rem] size-[34rem] -translate-y-1/2 rounded-full opacity-80 lg:right-[2%]" />
+              <div className="bg-grid absolute inset-0 opacity-50 [mask-image:radial-gradient(ellipse_at_30%_50%,black_10%,transparent_70%)]" />
+            </div>
+            <div className="grid items-center gap-8 lg:grid-cols-[1fr_auto] lg:gap-16">
+              <div className="text-center lg:text-left">
+                <p className="eyebrow">{t("closing.eyebrow")}</p>
+                <h2 className="mt-4 max-w-xl text-4xl font-extrabold tracking-tight text-balance sm:text-5xl">
+                  {t("closing.title")}
+                </h2>
+                <p className="mt-5 max-w-xl text-muted text-pretty sm:text-lg">{t("closing.body")}</p>
+                <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+                  <ButtonLink href="/#explore" size="lg">
+                    <MapIcon className="size-4" aria-hidden />
+                    {t("closing.cta")}
+                  </ButtonLink>
+                  <Link
+                    href="/partners"
+                    className="inline-flex h-12 items-center gap-1.5 rounded-full px-5 text-sm font-bold text-muted transition hover:text-fg"
+                  >
+                    {t("closing.secondary")}
+                    <ArrowRight className="size-4" aria-hidden />
+                  </Link>
+                </div>
+              </div>
+              <div className="relative mx-auto w-52 sm:w-60 lg:mx-0 lg:w-64">
+                <SpeechBubble tail="bottom-right" className="absolute -top-2 right-[78%] z-10 w-max max-w-[11rem] font-bold">
+                  {t("closing.bubble")}
+                </SpeechBubble>
+                <PotPreview size="M" finish="sage" plantId="snake-plant" expression="love" />
               </div>
             </div>
           </div>

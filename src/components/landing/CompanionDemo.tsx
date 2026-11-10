@@ -39,10 +39,10 @@ export function CompanionDemo() {
     <div ref={ref} className="relative flex h-full flex-col items-center justify-center gap-5 px-6 py-10">
       <div className="relative">
         <div aria-hidden className="absolute -inset-10 rounded-full bg-leaf-300/10 blur-3xl" />
-        <div className="relative rounded-[2rem] border border-fg/10 bg-[#0a110e] p-3 shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_30px_60px_-20px_rgb(0_0_0/0.9)]">
+        <div className="relative rounded-[2rem] border border-fg/10 bg-screen p-3 shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_30px_60px_-20px_rgb(40_28_10/0.45)]">
           <CompanionFace expression={current.expression} talking={current.talking} size={176} />
         </div>
-        <span className="absolute -right-3 -bottom-3 inline-flex items-center gap-1.5 rounded-full border border-fg/10 bg-surface-2/90 px-2.5 py-1 font-mono text-[10px] tracking-wider text-muted uppercase backdrop-blur">
+        <span className="absolute -right-3 -bottom-3 inline-flex items-center gap-1.5 rounded-full border border-fg/10 bg-surface-2/90 px-2.5 py-1 font-bold tabular-nums text-[10px] tracking-wider text-muted uppercase backdrop-blur">
           <span className="size-1.5 rounded-full bg-leaf-300 shadow-[0_0_8px_var(--color-leaf-300)]" />
           {t(`mood.${current.expression}`)}
         </span>

@@ -151,7 +151,7 @@ export function Playground({
     <div className="grid gap-4 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-6">
       {/* Companion panel */}
       <Card className="relative overflow-hidden p-5 lg:sticky lg:top-24 lg:self-start">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(ellipse_at_top,rgb(155_227_74/0.16),transparent_70%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(ellipse_at_top,rgb(var(--glow)/0.16),transparent_70%)]" />
         <div className="relative flex items-center gap-4 lg:flex-col lg:text-center">
           <CompanionFace expression={expression} talking={talking} size={desktop ? 224 : 120} className="shrink-0" />
           <div className="min-w-0">

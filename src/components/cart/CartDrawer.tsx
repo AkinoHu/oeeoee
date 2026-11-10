@@ -241,7 +241,7 @@ function CartLineRow({
 
   return (
     <motion.li layout className="flex gap-4 py-4">
-      <div className="relative flex h-24 w-20 shrink-0 items-end justify-center overflow-hidden rounded-xl border border-line bg-[radial-gradient(circle_at_50%_30%,rgb(155_227_74/0.14),transparent_70%)] px-1.5 pb-1">
+      <div className="relative flex h-24 w-20 shrink-0 items-end justify-center overflow-hidden rounded-xl border border-line bg-[radial-gradient(circle_at_50%_30%,rgb(var(--glow)/0.14),transparent_70%)] px-1.5 pb-1">
         {pot && (
           <PotPreview
             size={pot.size}

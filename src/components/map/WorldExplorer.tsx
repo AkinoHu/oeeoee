@@ -32,7 +32,7 @@ import {
   type MapLayout,
   type View,
 } from "./engine/view";
-import { LocationChip, type LocateState, type VisitorView } from "./LocationChip";
+import { CompanionGreeter, type LocateState, type VisitorView } from "./CompanionGreeter";
 import { distanceKm, featureIdAt, refineForSmallMarkets, requestPosition } from "./locate";
 import { MapPanel } from "./MapPanel";
 import { RegionChips, type RegionStat } from "./RegionChips";
@@ -63,7 +63,7 @@ const MODE_RANK: Record<SalesMode, number> = { full: 0, pot_only: 1, coming_soon
 /** Markets whose land covers fewer fine dots than this also get a centre marker. */
 const SMALL_MARKET_DOTS = 40;
 /** Hero buttons: size "md" on phones, "lg" from the lg breakpoint. */
-const HERO_BUTTON_LG = "lg:h-12 lg:rounded-2xl lg:px-6 lg:text-base";
+const HERO_BUTTON_LG = "lg:h-13 lg:px-7 lg:text-base";
 
 const noopSubscribe = () => () => {};
 
@@ -121,7 +121,14 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
   const focusNext = useRef<"panel" | RegionId | null>(null);
   const lastLayout = useRef<MapLayout | null>(null);
 
-  const [layout, setLayout] = useState<MapLayout | null>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  /** Measured height of the hero copy; the world map starts below it. */
+  const [heroHeight, setHeroHeight] = useState(0);
+  const layout = useMemo<MapLayout | null>(
+    () => (size ? computeLayout(size.width, size.height, heroHeight) : null),
+    [size, heroHeight],
+  );
   const [stage, setStage] = useState<Stage>({ level: "world" });
   const [hoverRegion, setHoverRegion] = useState<RegionId | null>(null);
   const [hoverCode, setHoverCode] = useState<string | null>(null);
@@ -309,6 +316,7 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
     let engine: WorldMapEngine;
     try {
       engine = new WorldMapEngine(canvas, {
+        tone: "day",
         reducedMotion: reduced,
         onView: (v, animating) => placeOverlaysRef.current(v, !animating),
       });
@@ -322,7 +330,7 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
       const { width, height } = entry.contentRect;
       size = { width, height };
       engine.resize(width, height, window.devicePixelRatio);
-      setLayout((prev) => (prev && prev.width === width && prev.height === height ? prev : computeLayout(width, height)));
+      setSize((prev) => (prev && prev.width === width && prev.height === height ? prev : { width, height }));
     });
     ro.observe(host);
 
@@ -359,6 +367,17 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
       lastLayout.current = null;
     };
   }, []);
+
+  // The hero copy differs in height per language and screen: measure it so the world
+  // map always starts below the text instead of under it.
+  const heroVisible = stage.level === "world";
+  useEffect(() => {
+    const el = heroRef.current;
+    if (!el || !heroVisible) return;
+    const ro = new ResizeObserver(() => setHeroHeight(Math.round(el.offsetHeight)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [heroVisible]);
 
   // Camera follows the stage; layout changes (resize) jump instead of flying.
   const targetView = useMemo(() => {
@@ -583,15 +602,14 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
         ref={sectionRef}
         id="explore"
         aria-label={t("map.label")}
-        className="relative isolate h-[calc(100svh-4rem)] min-h-[600px] scroll-mt-16 overflow-hidden bg-bg lg:min-h-[640px]"
+        className="relative isolate h-[calc(100svh-4rem)] min-h-[720px] scroll-mt-16 overflow-hidden bg-bg lg:min-h-[680px]"
       >
-        <style>{`@keyframes region-chip-pulse{0%{box-shadow:0 0 0 0 rgb(182 243 107/.55);border-color:rgb(182 243 107/.7)}100%{box-shadow:0 0 0 14px rgb(182 243 107/0)}}`}</style>
+        <style>{`@keyframes region-chip-pulse{0%{box-shadow:0 0 0 0 rgb(var(--accent)/.45);border-color:rgb(var(--accent)/.6)}100%{box-shadow:0 0 0 14px rgb(var(--accent)/0)}}`}</style>
 
-        {/* Backdrop: deep greenhouse glow + faint technical grid */}
+        {/* Backdrop: warm paper with patches of lamp light */}
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_70%_at_60%_45%,#0d1a14_0%,#08100c_45%,#060a08_80%)]" />
-          <div className="bg-grid absolute inset-0 opacity-40 [mask-image:radial-gradient(ellipse_70%_60%_at_55%_50%,black,transparent)]" />
-          <div className="absolute top-1/3 left-[68%] h-[46vh] w-[46vh] -translate-x-1/2 -translate-y-1/2 rounded-full bg-leaf-400/[0.07] blur-[90px]" />
+          <div className="absolute -top-24 right-[4%] h-[30rem] w-[30rem] rounded-full bg-honey/25 blur-[110px]" />
+          <div className="absolute bottom-[-12rem] left-[-8rem] h-[30rem] w-[36rem] rounded-full bg-leaf-700/45 blur-[120px]" />
         </div>
 
         {/* Map canvas + pointer layer */}
@@ -605,9 +623,8 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
           <canvas ref={canvasRef} aria-hidden className="block h-full w-full" />
         </div>
 
-        {/* Edge fades so the map melts into the header and the next section */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-bg to-transparent" />
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-bg to-transparent" />
+        {/* Bottom fade so the map melts into the next section */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-bg to-transparent" />
 
         {/* Pins / labels positioned over the canvas */}
         <div
@@ -640,12 +657,12 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
                     data-label
                     data-force={isSel || isHover ? "true" : "false"}
                     className={cn(
-                      "absolute top-0 left-3 inline-flex -translate-y-1/2 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap backdrop-blur-md transition-[opacity,background,border-color,color] duration-200",
+                      "absolute top-0 left-3 inline-flex -translate-y-1/2 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold whitespace-nowrap backdrop-blur-md transition-[opacity,background,border-color,color] duration-200",
                       isSel
-                        ? "border-leaf-200/60 bg-leaf-300 text-bg shadow-[0_0_24px_rgb(182_243_107/0.55)]"
+                        ? "border-leaf-200/60 bg-leaf-300 text-bg shadow-[0_6px_18px_-6px_rgb(var(--accent)/0.7)]"
                         : isHover
-                          ? "border-leaf-300/50 bg-bg/80 text-fg"
-                          : "border-fg/10 bg-bg/60 text-fg/85",
+                          ? "border-leaf-300/50 bg-surface text-fg shadow-sm"
+                          : "border-fg/10 bg-surface/80 text-fg/85 shadow-sm",
                     )}
                   >
                     {!isSel && <StatusDot mode={m.salesMode} className="size-1.5" />}
@@ -657,7 +674,7 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
 
           {stage.level === "world" && hovered && hoveredIndex >= 0 && (
             <div data-rx={model.marketRef[hoveredIndex][0].toFixed(2)} data-ry={model.marketRef[hoveredIndex][1].toFixed(2)} className="absolute top-0 left-0">
-              <div className="glass absolute bottom-5 left-0 -translate-x-1/2 rounded-2xl px-3.5 py-2.5 text-left whitespace-nowrap shadow-[0_12px_40px_-12px_rgb(0_0_0/0.8)]">
+              <div className="glass absolute bottom-5 left-0 -translate-x-1/2 rounded-2xl px-3.5 py-2.5 text-left whitespace-nowrap shadow-lg">
                 <p className="flex items-center gap-2 text-sm font-semibold">
                   <StatusDot mode={hovered.salesMode} />
                   {hovered.name}
@@ -672,7 +689,7 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
 
           {visitorInfo?.point && (
             <div data-rx={visitorInfo.point[0].toFixed(2)} data-ry={visitorInfo.point[1].toFixed(2)} className="absolute top-0 left-0">
-              <span className="absolute top-2 right-3 rounded-full whitespace-nowrap border border-sky/25 bg-bg/70 backdrop-blur-sm px-1.5 py-px font-mono text-[10px] font-semibold tracking-wider text-sky uppercase">
+              <span className="absolute top-2 right-3 rounded-full border border-clay/30 bg-surface/90 px-1.5 py-px text-[10px] font-extrabold whitespace-nowrap text-clay shadow-sm backdrop-blur-sm">
                 {t("loc.you")}
               </span>
             </div>
@@ -690,51 +707,51 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
               transition={{ duration: 0.35, ease: "easeOut" }}
               className="pointer-events-none absolute inset-x-0 top-0 z-20"
             >
-              <Container className="pt-6 sm:pt-10 lg:pt-10">
-                <div className="relative max-w-[31rem] xl:max-w-[60rem]">
-                  <div
-                    aria-hidden
-                    className="absolute -inset-x-20 -inset-y-14 -z-10 bg-[radial-gradient(closest-side,rgb(6_10_8/0.78),rgb(6_10_8/0.42)_62%,transparent)] xl:-inset-x-32"
-                  />
+              <Container ref={heroRef} className="flex items-end justify-between gap-8 pt-6 sm:pt-8 lg:pt-9">
+                <div className="max-w-[34rem] min-w-0">
                   <p className="eyebrow">{t("hero.eyebrow")}</p>
-                  <h1 className="mt-3 text-[2.1rem] leading-[1.06] font-semibold tracking-tight text-balance sm:mt-4 sm:text-5xl lg:text-[2.95rem] xl:text-[3.1rem]">
-                    <span className="block xl:inline">{t("hero.titleLead")}</span>{" "}
-                    <span className="text-gradient block pb-1 xl:inline">{t("hero.titleAccent")}</span>
+                  <h1 className="mt-2.5 text-[2.15rem] leading-[1.08] font-extrabold tracking-tight text-balance sm:text-5xl lg:mt-3 lg:text-[3.25rem]">
+                    {t("hero.titleLead")} <span className="text-gradient pb-1">{t("hero.titleAccent")}</span>
                   </h1>
-                  <p className="mt-3 max-w-[27rem] text-sm leading-relaxed text-muted text-pretty sm:mt-4 sm:text-[15px] xl:max-w-[36rem]">
+                  <p className="mt-3 max-w-[31rem] text-sm leading-relaxed text-muted text-pretty sm:text-[15px] lg:mt-4">
                     {t("hero.body")}
                   </p>
-                  <div className="pointer-events-auto mt-5 flex flex-wrap items-center gap-2 sm:mt-6 sm:gap-3">
+                  <div className="pointer-events-auto mt-4 flex flex-wrap items-center gap-2 sm:gap-3 lg:mt-5">
                     {/* Sized with CSS breakpoints (not the measured layout) so the server HTML doesn't jump on phones. */}
                     <Button size="md" className={HERO_BUTTON_LG} onClick={focusChips}>
                       <Globe2 className="size-4" aria-hidden />
                       {t("hero.cta")}
                     </Button>
-                    <ButtonLink href="#product" variant="ghost" size="md" className={cn(HERO_BUTTON_LG, "bg-bg/40 backdrop-blur-sm")}>
+                    <ButtonLink href="#product" variant="ghost" size="md" className={cn(HERO_BUTTON_LG, "hidden sm:inline-flex")}>
                       {t("hero.secondary")}
                       <ArrowDown className="size-4" aria-hidden />
                     </ButtonLink>
                   </div>
+                  {/* Phones: the companion says hello under the buttons. Both variants are always
+                      rendered and switched by CSS, so the server HTML matches (no pop-in / shift). */}
+                  <CompanionGreeter
+                    variant="face"
+                    visitor={visitorView}
+                    state={locState}
+                    precise={visitor?.source === "device"}
+                    onExplore={exploreVisitor}
+                    onLocate={locate}
+                    className="pointer-events-auto mt-4 lg:hidden"
+                  />
                 </div>
+                <CompanionGreeter
+                  variant="pot"
+                  visitor={visitorView}
+                  state={locState}
+                  precise={visitor?.source === "device"}
+                  onExplore={exploreVisitor}
+                  onLocate={locate}
+                  className="pointer-events-auto hidden shrink-0 lg:flex"
+                />
               </Container>
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Location (desktop: top right on the world stage). Both chips are always rendered and
-            switched by CSS, so the server HTML matches the phone layout (no pop-in / shift). */}
-        {stage.level === "world" && (
-          <div className="absolute top-6 right-6 z-20 hidden lg:block">
-            <LocationChip
-              visitor={visitorView}
-              state={locState}
-              precise={visitor?.source === "device"}
-              onExplore={exploreVisitor}
-              onLocate={locate}
-              className="justify-end"
-            />
-          </div>
-        )}
 
         {/* Stage 2/3: breadcrumb */}
         <AnimatePresence>
@@ -790,7 +807,7 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
                   </>
                 )}
               </ol>
-              <p className="mt-2 hidden pl-3 font-mono text-[10px] tracking-widest text-muted uppercase lg:block">
+              <p className="mt-2 hidden pl-3 text-[11px] font-bold text-faint lg:block">
                 {t("map.escHint")}
               </p>
             </motion.nav>
@@ -809,15 +826,6 @@ export function WorldExplorer({ regions, markets, guess }: WorldExplorerProps) {
               className="absolute inset-x-0 bottom-0 z-20 pb-4 sm:pb-6"
             >
               <Container>
-                <LocationChip
-                  visitor={visitorView}
-                  state={locState}
-                  precise={visitor?.source === "device"}
-                  onExplore={exploreVisitor}
-                  onLocate={locate}
-                  compact
-                  className="mb-3 lg:hidden"
-                />
                 <div className="lg:mx-auto lg:w-fit">
                   <div className="mb-2.5 flex items-center justify-between gap-4 px-1">
                     <p id="region-chips-label" className="eyebrow">

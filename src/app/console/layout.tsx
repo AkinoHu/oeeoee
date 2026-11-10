@@ -26,7 +26,7 @@ export default async function ConsoleLayout({ children }: LayoutProps<"/console"
       <header className="sticky top-0 z-40 border-b border-line/60 bg-bg/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
           <Logo />
-          <span className="hidden rounded-md border border-line px-1.5 py-0.5 font-mono text-[11px] tracking-wider text-leaf-300 uppercase sm:inline">
+          <span className="hidden rounded-md border border-line px-1.5 py-0.5 font-bold tabular-nums text-[11px] tracking-wider text-leaf-300 uppercase sm:inline">
             {t("shell.badge")}
           </span>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">

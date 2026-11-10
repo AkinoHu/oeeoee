@@ -73,7 +73,7 @@ export default async function CountryStorePage({ params, searchParams }: PagePro
   return (
     <>
       <section className="relative overflow-hidden border-b border-line/60">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_80%_at_15%_0%,rgb(155_227_74/0.13),transparent_65%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_80%_at_15%_0%,rgb(var(--glow)/0.13),transparent_65%)]" />
         <div className="bg-grid pointer-events-none absolute inset-0 [mask-image:linear-gradient(to_bottom,black,transparent)] opacity-70" />
         <Container className="relative pt-8 pb-10 sm:pt-10 sm:pb-14">
           <nav aria-label={t("hero.breadcrumbLabel")} className="flex items-center gap-1.5 text-xs text-muted">

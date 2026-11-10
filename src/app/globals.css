@@ -1,50 +1,83 @@
 @import "tailwindcss";
 
 /*
- * oeeoee design tokens — dark, nocturnal greenhouse.
- * Use the semantic utilities: bg-bg, bg-surface, bg-surface-2, border-line,
- * text-fg, text-muted, text-leaf-300, bg-leaf-400, text-sky, text-sun, text-rose.
+ * oeeoee design tokens — "a small life on your desk".
+ *
+ * Two moods share one set of utilities:
+ *   • Day (default)   warm oat paper, leafy green, honey / clay accents.
+ *   • Night (.theme-night scope)   a lamp-lit room: used for the world map and
+ *     product stages, where things glow.
+ *
+ * Always use the semantic utilities (bg-bg, bg-surface, bg-surface-2,
+ * border-line, text-fg, text-muted, text-faint, leaf-*, sky, sun, rose). The
+ * leaf scale means the same thing in both moods: 200–300 is the readable
+ * accent (text, primary fills), 400–500 softer, 700–900 quiet tints.
+ * See docs/DESIGN.md.
  */
 @theme {
-  --font-sans: var(--font-geist-sans), "PingFang SC", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
-    "Noto Sans CJK SC", "Noto Sans JP", "Microsoft YaHei", system-ui, sans-serif;
+  --font-sans: "Nunito Variable", "PingFang SC", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans CJK SC",
+    "Noto Sans JP", "Microsoft YaHei", system-ui, sans-serif;
+  /* Headings: rounded CJK faces where the system has them. */
+  --font-display: "Nunito Variable", "Yuanti SC", "PingFang SC", "Hiragino Sans", "Noto Sans CJK SC", "Microsoft YaHei",
+    system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
 
-  --color-bg: #060a08;
-  --color-surface: #0c1310;
-  --color-surface-2: #121b17;
-  --color-surface-3: #18241f;
-  --color-line: #1e2b25;
-  --color-line-strong: #2c3d35;
-  --color-fg: #e9f0ea;
-  --color-muted: #8ea096;
-  --color-faint: #7b8c83; /* ≥4.5:1 on every surface (WCAG AA) */
+  /* ── Day ─────────────────────────────────────────────── */
+  --color-bg: #fbf6ec;
+  --color-surface: #fffdf8;
+  --color-surface-2: #f5eee0;
+  --color-surface-3: #ece3d1;
+  --color-line: #e7ddca;
+  --color-line-strong: #d2c5ab;
+  --color-fg: #25332b;
+  --color-muted: #56645a;
+  --color-faint: #667266;
 
-  /* chlorophyll accent */
-  --color-leaf-50: #f3fde8;
-  --color-leaf-100: #e2fbc9;
-  --color-leaf-200: #c9f79c;
-  --color-leaf-300: #b6f36b;
-  --color-leaf-400: #9be34a;
-  --color-leaf-500: #7cc72f;
-  --color-leaf-600: #5d9e20;
-  --color-leaf-700: #46781c;
-  --color-leaf-800: #355a1b;
-  --color-leaf-900: #1f3812;
+  /* leaf: readable accent at 200–300, tints at 700–900 */
+  --color-leaf-50: #12301f;
+  --color-leaf-100: #1b432c;
+  --color-leaf-200: #245c38;
+  --color-leaf-300: #2e7446;
+  --color-leaf-400: #4a8c63;
+  --color-leaf-500: #6fae86;
+  --color-leaf-600: #a3cdb0;
+  --color-leaf-700: #c8e2ce;
+  --color-leaf-800: #deeedf;
+  --color-leaf-900: #ecf5ea;
 
-  /* secondary signals */
-  --color-sky: #7cd4ff;
-  --color-sun: #ffcf6b;
-  --color-rose: #ff7a90;
+  /* signals (readable as text on paper) */
+  --color-sky: #256f96;
+  --color-sun: #955a0c;
+  --color-rose: #bf3f33;
 
-  --radius-xl: 1rem;
-  --radius-2xl: 1.25rem;
-  --radius-3xl: 1.75rem;
+  /* warm brand accents (fills, glows, illustrations — not body text) */
+  --color-honey: #f4b860;
+  --color-peach: #f8d5b8;
+  --color-clay: #a8532d;
+  --color-sprout: #cdeb9a;
 
-  --shadow-glow: 0 0 0 1px rgb(182 243 107 / 0.25), 0 8px 40px -8px rgb(155 227 74 / 0.45);
+  /* the pot's display glass: dark in every mood */
+  --color-screen: #0b120f;
+
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1.125rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
+  --shadow-sm: 0 1px 2px rgb(74 55 28 / 0.06);
+  --shadow-md: 0 2px 4px rgb(74 55 28 / 0.05), 0 6px 16px -6px rgb(74 55 28 / 0.12);
+  --shadow-lg: 0 2px 4px rgb(74 55 28 / 0.05), 0 12px 28px -10px rgb(74 55 28 / 0.16);
+  --shadow-xl: 0 4px 8px rgb(74 55 28 / 0.05), 0 20px 44px -16px rgb(74 55 28 / 0.2);
+  --shadow-2xl: 0 6px 12px rgb(74 55 28 / 0.06), 0 30px 64px -20px rgb(74 55 28 / 0.26);
+  /* soft resting shadow for cards */
+  --shadow-soft: 0 1px 2px rgb(74 55 28 / 0.04), 0 10px 30px -14px rgb(74 55 28 / 0.14);
+  /* accent halo for primary actions */
+  --shadow-glow: 0 0 0 1px rgb(var(--accent) / 0.18), 0 10px 28px -10px rgb(var(--accent) / 0.5);
 
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-soft: pulse-soft 3s ease-in-out infinite;
+  --animate-sway: sway 5s ease-in-out infinite;
 
   @keyframes float {
     0%,
@@ -64,10 +97,64 @@
       opacity: 1;
     }
   }
+  @keyframes sway {
+    0%,
+    100% {
+      transform: rotate(-2deg);
+    }
+    50% {
+      transform: rotate(2deg);
+    }
+  }
 }
 
 :root {
+  color-scheme: light;
+  /* channel triplets for arbitrary rgb(var(--x) / a) values */
+  --accent: 46 116 70; /* leaf-300 */
+  --glow: 244 184 96; /* honey lamp light */
+  --ink: 37 51 43; /* fg */
+  --glass-bg: rgb(255 253 248 / 0.8);
+  --glass-border: rgb(74 55 28 / 0.1);
+}
+
+/* ── Night scope ─────────────────────────────────────────── */
+.theme-night {
   color-scheme: dark;
+  --color-bg: #1a1915;
+  --color-surface: #22211b;
+  --color-surface-2: #2b2a22;
+  --color-surface-3: #36342a;
+  --color-line: #3b392e;
+  --color-line-strong: #504d3f;
+  --color-fg: #f6efdf;
+  --color-muted: #b8b09d;
+  --color-faint: #9a9382;
+
+  --color-leaf-50: #f6fbe9;
+  --color-leaf-100: #e9f6cc;
+  --color-leaf-200: #d6efa6;
+  --color-leaf-300: #c3e685;
+  --color-leaf-400: #a9d568;
+  --color-leaf-500: #8bbb4d;
+  --color-leaf-600: #6b9638;
+  --color-leaf-700: #50722c;
+  --color-leaf-800: #3b5424;
+  --color-leaf-900: #26371a;
+
+  --color-sky: #8fd3f4;
+  --color-sun: #ffcb70;
+  --color-rose: #ff8e86;
+  --color-clay: #f0a274;
+
+  --accent: 195 230 133;
+  --glow: 255 196 110;
+  --ink: 246 239 223;
+  --glass-bg: rgb(30 29 24 / 0.68);
+  --glass-border: rgb(246 239 223 / 0.1);
+
+  background-color: var(--color-bg);
+  color: var(--color-fg);
 }
 
 html {
@@ -79,11 +166,24 @@ body {
   background: var(--color-bg);
   color: var(--color-fg);
   font-family: var(--font-sans);
+  font-weight: 500;
   -webkit-font-smoothing: antialiased;
 }
 
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Japanese: Yuanti draws kanji in Chinese forms, so use the rounded Hiragino face instead. */
+:lang(ja) :is(h1, h2, h3, .font-display) {
+  font-family: "Nunito Variable", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+}
+
 ::selection {
-  background: rgb(182 243 107 / 0.3);
+  background: rgb(var(--accent) / 0.22);
 }
 
 :focus-visible {
@@ -94,33 +194,51 @@ body {
 @layer components {
   /* Frosted panel used for overlays on the map and floating UI. */
   .glass {
-    background: rgb(12 19 16 / 0.62);
+    background: var(--glass-bg);
     backdrop-filter: blur(14px) saturate(140%);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
-    border: 1px solid rgb(233 240 234 / 0.08);
+    border: 1px solid var(--glass-border);
   }
 
+  /* Leaf-to-sunlight accent for a highlighted phrase in a heading. */
   .text-gradient {
-    background: linear-gradient(100deg, var(--color-leaf-200), var(--color-leaf-400) 45%, var(--color-sky));
+    background: linear-gradient(100deg, var(--color-leaf-300) 10%, var(--color-leaf-400) 50%, var(--color-clay) 105%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
-
-  /* Faint technical grid background. */
-  .bg-grid {
-    background-image:
-      linear-gradient(to right, rgb(233 240 234 / 0.04) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(233 240 234 / 0.04) 1px, transparent 1px);
-    background-size: 48px 48px;
+  .theme-night .text-gradient {
+    background-image: linear-gradient(100deg, var(--color-leaf-200), var(--color-leaf-300) 45%, var(--color-sun));
   }
 
+  /* Soft dotted paper texture (name kept from the old technical grid). */
+  .bg-grid {
+    background-image: radial-gradient(rgb(var(--ink) / 0.09) 1px, transparent 1.4px);
+    background-size: 22px 22px;
+  }
+
+  /* Small label above a heading, with a leaf bullet. */
   .eyebrow {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
     color: var(--color-leaf-300);
+  }
+  .eyebrow::before {
+    content: "";
+    display: inline-block;
+    width: 0.55em;
+    height: 0.55em;
+    margin-right: 0.5em;
+    border-radius: 999px 999px 999px 0;
+    background: currentColor;
+    transform: rotate(-45deg) translateY(-0.05em);
+  }
+
+  /* Warm lamp-light patch behind a product or a hero. */
+  .lamp-glow {
+    background: radial-gradient(closest-side, rgb(var(--glow) / 0.38), rgb(var(--glow) / 0.12) 55%, transparent);
   }
 }
 

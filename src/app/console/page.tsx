@@ -35,7 +35,7 @@ export default async function ConsoleOverviewPage() {
       <>
         <PageHeader title={t(`overview.greeting.${period}`, { name: firstName })} description={t("overview.subtitle")} />
         <Card className="bg-grid relative overflow-hidden px-6 py-12 text-center sm:py-16">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgb(155_227_74/0.12),transparent_60%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgb(var(--glow)/0.12),transparent_60%)]" />
           <div className="relative mx-auto flex max-w-md flex-col items-center">
             <CompanionFace expression="curious" size={168} className="animate-float" />
             <h2 className="mt-6 text-xl font-semibold tracking-tight sm:text-2xl">{t("empty.title")}</h2>
@@ -75,7 +75,7 @@ export default async function ConsoleOverviewPage() {
       <div className="grid gap-4 lg:grid-cols-5">
         {/* Companion */}
         <Card className="relative overflow-hidden p-5 sm:p-6 lg:col-span-3">
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-72 bg-[radial-gradient(ellipse_at_left,rgb(155_227_74/0.13),transparent_70%)]" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-72 bg-[radial-gradient(ellipse_at_left,rgb(var(--glow)/0.13),transparent_70%)]" />
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
             <CompanionFace expression={primary.vitals.expression} size={136} className="shrink-0 self-center" />
             <div className="min-w-0 flex-1">

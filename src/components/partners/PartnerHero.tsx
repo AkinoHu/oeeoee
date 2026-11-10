@@ -14,7 +14,7 @@ export async function PartnerHero({ countryName }: { countryName?: string }) {
   return (
     <section className="relative overflow-hidden border-b border-line/60">
       <div className="bg-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_75%)]" />
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-[36rem] w-[60rem] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgb(155_227_74/0.14),transparent_65%)]" />
+      <div className="pointer-events-none absolute -top-40 left-1/2 h-[36rem] w-[60rem] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgb(var(--glow)/0.14),transparent_65%)]" />
 
       <Container className="relative grid items-center gap-12 pt-14 pb-16 sm:pt-20 lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:pt-24 lg:pb-24">
         <div>
@@ -46,13 +46,13 @@ export async function PartnerHero({ countryName }: { countryName?: string }) {
 
         {/* Illustrative partner view — decorative, so hidden from assistive tech. */}
         <div aria-hidden className="relative mx-auto aspect-square w-full max-w-[26rem] lg:max-w-[30rem]">
-          <div className="absolute inset-[8%] rounded-full bg-[radial-gradient(circle,rgb(155_227_74/0.22),transparent_65%)] blur-2xl" />
+          <div className="absolute inset-[8%] rounded-full bg-[radial-gradient(circle,rgb(var(--glow)/0.22),transparent_65%)] blur-2xl" />
           <div className="absolute inset-[10%] rounded-full border border-leaf-300/15" />
           <div className="absolute inset-[20%] rounded-full border border-dashed border-leaf-300/25 motion-safe:animate-[spin_60s_linear_infinite]" />
           <div className="absolute inset-[30%] rounded-full bg-surface/60 ring-1 ring-line" />
           {plant && (
             <div className="absolute inset-x-[24%] top-[16%] bottom-[22%] flex items-end justify-center">
-              <PlantArt plantId={plant.id} className="h-full w-auto drop-shadow-[0_20px_40px_rgb(0_0_0/0.5)]" />
+              <PlantArt plantId={plant.id} className="h-full w-auto drop-shadow-[0_18px_28px_rgb(74_55_28/0.25)]" />
             </div>
           )}
 
@@ -108,7 +108,7 @@ function Meter({ icon, label, value, fill }: { icon: React.ReactNode; label: str
           {icon}
           {label}
         </span>
-        <span className="font-mono text-fg/90">{value}</span>
+        <span className="font-bold tabular-nums text-fg/90">{value}</span>
       </div>
       <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface-3">
         <div className="h-full rounded-full bg-leaf-400" style={{ width: `${fill}%` }} />

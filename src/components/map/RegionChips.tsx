@@ -53,7 +53,7 @@ export function RegionChips({ regions, stats, activeRegion, pulse, chipRef, onHo
             className={cn(
               "glass group inline-flex h-10 shrink-0 snap-start items-center gap-2 rounded-full px-3.5 text-sm whitespace-nowrap transition-[background,border-color,box-shadow,color] duration-200",
               active
-                ? "border-leaf-300/50 bg-leaf-300/12 text-fg shadow-[0_0_24px_-6px_rgb(182_243_107/0.6)]"
+                ? "border-leaf-300/50 bg-leaf-300/12 text-fg shadow-[0_0_24px_-6px_rgb(var(--accent)/0.6)]"
                 : stat.count
                   ? "text-fg/90 hover:border-leaf-300/40 hover:text-fg"
                   : "text-fg/65 hover:border-fg/20 hover:text-fg",
@@ -63,7 +63,7 @@ export function RegionChips({ regions, stats, activeRegion, pulse, chipRef, onHo
             <StatusDot mode={stat.best} />
             <span className="font-medium">{r.name}</span>
             {stat.count > 0 && (
-              <span className="-mr-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-fg/[0.08] px-1.5 font-mono text-[11px] text-muted tabular-nums">
+              <span className="-mr-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-fg/[0.08] px-1.5 font-bold tabular-nums text-[11px] text-muted ">
                 {stat.count}
               </span>
             )}

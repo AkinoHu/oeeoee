@@ -12,7 +12,7 @@ export async function Logo({ className }: { className?: string }) {
   return (
     <Link href="/" className={cn("group inline-flex items-center gap-2", className)} aria-label={t("nav.home")}>
       <LogoMark className="transition-transform group-hover:-rotate-6" />
-      <span className="font-mono text-lg font-semibold tracking-tight">oeeoee</span>
+      <span className="text-xl font-extrabold tracking-tight">oeeoee</span>
     </Link>
   );
 }

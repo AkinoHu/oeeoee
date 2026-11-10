@@ -87,7 +87,7 @@ function Sparkline({ values, range }: { values: number[]; range: [number, number
       </svg>
       {/* End point as HTML so it stays round while the SVG stretches */}
       <span
-        className="absolute right-0 size-1.5 translate-x-1/2 -translate-y-1/2 rounded-full bg-leaf-200 shadow-[0_0_0_4px_rgb(182_243_107/0.18),0_0_10px_var(--color-leaf-300)] transition-[top] duration-700"
+        className="absolute right-0 size-1.5 translate-x-1/2 -translate-y-1/2 rounded-full bg-leaf-200 shadow-[0_0_0_4px_rgb(var(--accent)/0.18),0_0_10px_var(--color-leaf-300)] transition-[top] duration-700"
         style={{ top: `${((ly / h) * 100).toFixed(1)}%` }}
       />
     </div>
@@ -125,13 +125,13 @@ export function VitalsDashboard() {
   return (
     <div
       ref={ref}
-      className="relative overflow-hidden rounded-3xl border border-fg/10 bg-surface/80 p-4 shadow-[0_40px_120px_-40px_rgb(155_227_74/0.25)] sm:p-6"
+      className="relative overflow-hidden rounded-3xl border border-fg/10 bg-surface/80 p-4 shadow-[0_40px_120px_-40px_rgb(var(--glow)/0.25)] sm:p-6"
     >
       <div aria-hidden className="pointer-events-none absolute -top-32 -right-24 size-80 rounded-full bg-leaf-300/10 blur-3xl" />
 
       {/* Header */}
       <div className="relative flex items-center gap-3">
-        <div className="shrink-0 rounded-2xl border border-fg/10 bg-[#0a110e] p-1.5">
+        <div className="shrink-0 rounded-2xl border border-fg/10 bg-screen p-1.5">
           <CompanionFace expression="happy" size={52} />
         </div>
         <div className="min-w-0 flex-1">
@@ -143,7 +143,7 @@ export function VitalsDashboard() {
             {t("vitals.mood")}
           </p>
         </div>
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-fg/10 px-2.5 py-1 font-mono text-[10px] tracking-widest text-muted uppercase">
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-fg/10 px-2.5 py-1 font-bold tabular-nums text-[10px] tracking-wide text-muted uppercase">
           <span className="relative flex size-1.5">
             <span className="absolute inset-0 animate-ping rounded-full bg-rose/70" />
             <span className="relative size-1.5 rounded-full bg-rose" />
@@ -164,12 +164,12 @@ export function VitalsDashboard() {
                 <Icon className="size-3.5 text-leaf-300" aria-hidden />
                 {t(`vitals.${m.key}`)}
               </p>
-              <p className="mt-1.5 font-mono text-xl font-semibold tracking-tight tabular-nums sm:text-2xl">
+              <p className="mt-1.5 text-xl font-extrabold tracking-tight tabular-nums sm:text-2xl">
                 {value.toFixed(m.decimals)}
                 <span className="ml-1 text-xs font-normal text-muted">{m.unit}</span>
               </p>
               <Sparkline values={values} range={m.range} />
-              <p className="mt-1 font-mono text-[10px] text-faint">
+              <p className="mt-1 font-bold tabular-nums text-[10px] text-faint">
                 {t("vitals.target", { min: m.target[0], max: m.target[1] })} {m.unit}
               </p>
             </div>
@@ -183,7 +183,7 @@ export function VitalsDashboard() {
               <Droplets className="size-3.5 text-sky" aria-hidden />
               {t("vitals.tank")}
             </p>
-            <p className="mt-1.5 font-mono text-xl font-semibold tracking-tight tabular-nums sm:text-2xl">
+            <p className="mt-1.5 text-xl font-extrabold tracking-tight tabular-nums sm:text-2xl">
               {Math.round(tank)}
               <span className="ml-1 text-xs font-normal text-muted">%</span>
             </p>
@@ -210,8 +210,8 @@ export function VitalsDashboard() {
               <div
                 key={deg}
                 className={cn(
-                  "relative aspect-[3/4] overflow-hidden rounded-md border bg-[#0a110e] transition-colors duration-500",
-                  i === ring ? "border-leaf-300/70 shadow-[0_0_12px_rgb(182_243_107/0.35)]" : "border-fg/[0.06]",
+                  "relative aspect-[3/4] overflow-hidden rounded-md border bg-screen transition-colors duration-500",
+                  i === ring ? "border-leaf-300/70 shadow-[0_0_12px_rgb(var(--accent)/0.35)]" : "border-fg/[0.06]",
                 )}
               >
                 <div
@@ -223,7 +223,7 @@ export function VitalsDashboard() {
               </div>
             ))}
           </div>
-          <p className="mt-2 font-mono text-[10px] text-faint">{t("vitals.ringBody")}</p>
+          <p className="mt-2 font-bold tabular-nums text-[10px] text-faint">{t("vitals.ringBody")}</p>
         </div>
       </div>
 
@@ -239,7 +239,7 @@ export function VitalsDashboard() {
             ] as const
           ).map(([time, key, Icon]) => (
             <li key={key} className="flex items-center gap-3">
-              <span className="w-11 shrink-0 font-mono text-xs text-faint tabular-nums">{time}</span>
+              <span className="w-11 shrink-0 font-bold tabular-nums text-xs text-faint ">{time}</span>
               <Icon className="size-3.5 shrink-0 text-leaf-300" aria-hidden />
               <span className="min-w-0 text-fg/85">{t(key)}</span>
             </li>

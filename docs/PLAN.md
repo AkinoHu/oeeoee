@@ -175,7 +175,7 @@ flowchart LR
 | 多语言 | 中 / 英 / 日 | `src/i18n` |
 
 技术栈：Next.js 16 · Prisma 7 + PostgreSQL · Better Auth（谷歌登录）· Stripe · Claude API · Tailwind v4 · 部署 Railway（域名 oeeoee.com 的 DNS 在 Cloudflare）。
-部署步骤见 [`DEPLOY.md`](DEPLOY.md)，任务拆分见 [`TASKS.md`](TASKS.md)，固件对接见 [`DEVICE_API.md`](DEVICE_API.md)。
+部署步骤见 [`DEPLOY.md`](DEPLOY.md)，任务拆分见 [`TASKS.md`](TASKS.md)，视觉规范见 [`DESIGN.md`](DESIGN.md)，固件对接见 [`DEVICE_API.md`](DEVICE_API.md)。
 
 ### 验证情况
 

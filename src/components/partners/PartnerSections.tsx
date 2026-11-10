@@ -80,7 +80,7 @@ export async function StatsStrip() {
             )}
           >
             <dt className="text-sm text-muted">{s.label}</dt>
-            <dd className="font-mono text-3xl font-semibold tracking-tight text-leaf-200 sm:text-4xl">{s.value}</dd>
+            <dd className="text-3xl font-extrabold tracking-tight text-leaf-200 tabular-nums sm:text-4xl">{s.value}</dd>
           </div>
         ))}
       </dl>
@@ -146,7 +146,7 @@ export async function HowSection() {
               <Icon className="h-5 w-5" aria-hidden />
             </span>
             <div>
-              <p className="font-mono text-xs tracking-widest text-faint uppercase">{t("how.step", { n: i + 1 })}</p>
+              <p className="font-bold tabular-nums text-xs tracking-wide text-faint uppercase">{t("how.step", { n: i + 1 })}</p>
               <h3 className="mt-1 font-semibold">{t(`how.${key}.title`)}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-muted">{t(`how.${key}.body`)}</p>
             </div>
@@ -203,7 +203,7 @@ export async function RequirementsSection() {
 
 const STATUS_STYLE: Record<PartnerStatus, { dot: string; chip: string }> = {
   recruiting: {
-    dot: "bg-leaf-300 shadow-[0_0_0_3px_rgb(182_243_107/0.18)]",
+    dot: "bg-leaf-300 shadow-[0_0_0_3px_rgb(var(--accent)/0.18)]",
     chip: "border-leaf-300/30 bg-leaf-300/[0.06] hover:border-leaf-300/60 hover:bg-leaf-300/10",
   },
   planned: { dot: "bg-faint", chip: "border-line bg-surface-2/60 hover:border-line-strong" },
@@ -238,7 +238,7 @@ export async function MarketsSection({ selected }: { selected?: string }) {
             >
               <StatusDot status={status} />
               <span>{t(STATUS_KEY[status])}</span>
-              <span className="font-mono text-xs text-muted">{totals[status]}</span>
+              <span className="font-bold tabular-nums text-xs text-muted">{totals[status]}</span>
             </li>
           ))}
         </ul>
@@ -249,7 +249,7 @@ export async function MarketsSection({ selected }: { selected?: string }) {
           <Card key={group.region.id} className="p-5 sm:p-6">
             <div className="flex items-baseline justify-between gap-3">
               <h3 className="font-semibold">{lt(group.region.name, locale)}</h3>
-              <span className="font-mono text-xs text-faint">{group.countries.length === 1 ? t("markets.countOne") : t("markets.count", { n: group.countries.length })}</span>
+              <span className="font-bold tabular-nums text-xs text-faint">{group.countries.length === 1 ? t("markets.countOne") : t("markets.count", { n: group.countries.length })}</span>
             </div>
             <ul className="mt-4 flex flex-wrap gap-2">
               {group.countries.map((country) => (
@@ -292,7 +292,7 @@ function MarketChip({
     >
       <StatusDot status={status} />
       <span>{name}</span>
-      <span className="font-mono text-[0.65rem] text-faint">{country.code}</span>
+      <span className="font-bold tabular-nums text-[0.65rem] text-faint">{country.code}</span>
     </Link>
   );
 }
@@ -324,7 +324,7 @@ export async function PlantsSection() {
                   {plant.sizes.map((size) => (
                     <span
                       key={size}
-                      className="inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-line bg-surface-2 px-1 font-mono text-[0.65rem] text-muted"
+                      className="inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-line bg-surface-2 px-1 font-bold tabular-nums text-[0.65rem] text-muted"
                     >
                       {size}
                     </span>
@@ -388,7 +388,7 @@ export async function ApplyIntro() {
         <ol className="mt-4 space-y-4">
           {(["apply.next.1", "apply.next.2", "apply.next.3"] as const).map((key, i) => (
             <li key={key} className="flex gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-leaf-300/30 bg-leaf-300/10 font-mono text-xs text-leaf-200">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-leaf-300/30 bg-leaf-300/10 font-bold tabular-nums text-xs text-leaf-200">
                 {i + 1}
               </span>
               <span className="pt-0.5 text-sm text-muted">{t(key)}</span>

@@ -16,22 +16,85 @@ export const DOT_CLASS = {
   SELECTED: 7,
 } as const;
 const CLASS_COUNT = 8;
-const CLASS_RGB = [
-  "142,160,150",
-  "150,172,160",
-  "124,199,47",
-  "124,199,47",
-  "155,227,74",
-  "182,243,107",
-  "205,249,150",
-  "222,253,178",
-];
-const CLASS_ALPHA = [0.1, 0.32, 0.5, 0.5, 0.78, 1, 1, 1];
-/** Strength of the soft bloom drawn under each class (0 = none). */
-const CLASS_BLOOM = [0, 0, 0, 0.16, 0.42, 0.85, 0.9, 1];
 
-const LEAF = "182,243,107";
-const SKY = "124,212,255";
+/** Which mood the map is drawn in (see docs/DESIGN.md). */
+export type MapTone = "day" | "night";
+
+interface Palette {
+  /** How light effects are composited: additive glow only works on a dark ground. */
+  blend: GlobalCompositeOperation;
+  /** Dot colour / opacity per DOT_CLASS. */
+  classRgb: string[];
+  classAlpha: number[];
+  /** Strength of the soft bloom drawn under each class (0 = none). */
+  classBloom: number[];
+  /** Bloom colour; null = the class's own colour. */
+  bloomRgb: string | null;
+  /** Market accent: ripples, beams, reveal ring. */
+  accent: string;
+  /** Lamp light: halos, region glow. */
+  warm: string;
+  /** "You are here" beacon. */
+  visitor: string;
+  sparkle: string;
+  /** Reticles around the hovered / selected market. */
+  ink: string;
+  /** Ground colour (outline around the beacon dot). */
+  paper: string;
+  /** Sweeping highlight over the land (additive, night only). */
+  shimmer: boolean;
+  /** Dot radius as a share of the grid spacing, and its cap in px. */
+  dotRatio: number;
+  dotMax: number;
+  haloAlpha: number;
+  /** Extra factor for the halo of pot-only markets (many sit close together in Europe). */
+  potHalo: number;
+  beamAlpha: number;
+}
+
+const PALETTES: Record<MapTone, Palette> = {
+  // Soft sage land on oat paper; markets in leaf green sitting in honey light.
+  day: {
+    blend: "source-over",
+    classRgb: ["150,158,146", "138,150,136", "111,174,134", "111,174,134", "74,140,99", "46,116,70", "36,92,56", "27,67,44"],
+    classAlpha: [0.2, 0.5, 0.8, 0.72, 0.95, 1, 1, 1],
+    classBloom: [0, 0, 0, 0, 0.14, 0.4, 0.45, 0.55],
+    bloomRgb: "244,184,96",
+    accent: "46,116,70",
+    warm: "244,184,96",
+    visitor: "200,104,60",
+    sparkle: "244,184,96",
+    ink: "37,51,43",
+    paper: "251,246,236",
+    shimmer: false,
+    dotRatio: 0.31,
+    dotMax: 2.1,
+    haloAlpha: 0.75,
+    potHalo: 0.4,
+    beamAlpha: 1.9,
+  },
+  // A lamp-lit room: warm parchment land, sprout-green markets that glow.
+  night: {
+    blend: "lighter",
+    classRgb: ["150,140,120", "172,162,140", "169,213,104", "169,213,104", "195,230,133", "214,239,166", "233,246,204", "246,251,233"],
+    classAlpha: [0.12, 0.36, 0.55, 0.5, 0.8, 1, 1, 1],
+    classBloom: [0, 0, 0, 0.16, 0.42, 0.85, 0.9, 1],
+    bloomRgb: null,
+    accent: "195,230,133",
+    warm: "255,196,110",
+    visitor: "240,162,116",
+    sparkle: "255,226,170",
+    ink: "246,239,223",
+    paper: "26,25,21",
+    shimmer: true,
+    dotRatio: 0.26,
+    dotMax: 1.75,
+    haloAlpha: 1,
+    potHalo: 1,
+    beamAlpha: 1,
+  },
+};
+
 const TAU = Math.PI * 2;
 const TWINKLES = 70;
 const BLOOM_SCALE = 0.25;
@@ -66,6 +129,8 @@ export interface Scene {
 
 export interface EngineOptions {
   reducedMotion: boolean;
+  /** Colour mood; defaults to "day". */
+  tone?: MapTone;
   /** Called whenever the camera moves (every frame while flying). */
   onView?: (view: View, animating: boolean) => void;
 }
@@ -106,11 +171,12 @@ export class WorldMapEngine {
   private readonly shimmer: HTMLCanvasElement;
   private readonly sctx: CanvasRenderingContext2D;
   private readonly filterSupported: boolean;
+  private readonly pal: Palette;
 
   private width = 0;
   private height = 0;
   private dpr = 1;
-  private minSpacing = 5;
+  private minSpacing = 3;
   private view: View = { cx: 500, cy: 200, k: 1, ax: 0, ay: 0 };
   private hasView = false;
   private flight: Flight | null = null;
@@ -139,6 +205,7 @@ export class WorldMapEngine {
     [this.bloomB, this.bctxB] = makeCanvas();
     [this.shimmer, this.sctx] = makeCanvas();
     this.filterSupported = typeof this.bctxB.filter === "string";
+    this.pal = PALETTES[opts.tone ?? "day"];
   }
 
   // ── public API ───────────────────────────────────────────────────────────
@@ -150,7 +217,7 @@ export class WorldMapEngine {
     this.width = width;
     this.height = height;
     this.dpr = dpr;
-    this.minSpacing = width < 640 ? 3.3 : 3.7;
+    this.minSpacing = width < 640 ? 2.8 : 3;
     for (const c of [this.canvas, this.dots]) {
       c.width = Math.round(width * dpr);
       c.height = Math.round(height * dpr);
@@ -337,7 +404,8 @@ export class WorldMapEngine {
     const fadeT = this.flight ? rawFade : rawFade > 0.5 ? 1 : 0;
     const minLevel = fadeT > 0.02 ? level - 1 : level;
     const effSp = gridSp * (1 - fadeT / 2);
-    const r = clamp(effSp * 0.26, 0.75, 1.75);
+    const pal = this.pal;
+    const r = clamp(effSp * pal.dotRatio, 0.75, pal.dotMax);
     const useArc = r >= 1;
     const br = Math.max(0.8, r * 1.5 * BLOOM_SCALE);
     // Glow is strongest on the world view and fades as big countries fill the screen.
@@ -376,7 +444,7 @@ export class WorldMapEngine {
         } else {
           p.rect(sx - r, sy - r, r * 2, r * 2);
         }
-        if (CLASS_BLOOM[cls] > 0) {
+        if (pal.classBloom[cls] > 0) {
           const bp = bloomPaths[cls] ?? (bloomPaths[cls] = new Path2D());
           bp.rect(sx * BLOOM_SCALE - br, sy * BLOOM_SCALE - br, br * 2, br * 2);
         } else if (tier === 0 && cls <= DOT_CLASS.REGION && cls >= DOT_CLASS.LAND) {
@@ -403,7 +471,7 @@ export class WorldMapEngine {
       const bp = bloomPaths[cls];
       if (!bp) continue;
       anyBloom = true;
-      bctx.fillStyle = `rgba(${CLASS_RGB[cls]},${CLASS_BLOOM[cls] * bloomScale})`;
+      bctx.fillStyle = `rgba(${pal.bloomRgb ?? pal.classRgb[cls]},${pal.classBloom[cls] * bloomScale})`;
       bctx.fill(bp);
     }
     if (anyBloom) {
@@ -428,9 +496,9 @@ export class WorldMapEngine {
       for (let tier = 0; tier < 2; tier++) {
         const p = paths[cls * 2 + tier];
         if (!p) continue;
-        const a = CLASS_ALPHA[cls] * (tier ? fadeT : 1);
+        const a = pal.classAlpha[cls] * (tier ? fadeT : 1);
         if (a <= 0.003) continue;
-        ctx.fillStyle = `rgba(${CLASS_RGB[cls]},${a})`;
+        ctx.fillStyle = `rgba(${pal.classRgb[cls]},${a})`;
         ctx.fill(p);
       }
     }
@@ -442,6 +510,10 @@ export class WorldMapEngine {
     const { width: W, height: H, dpr } = this;
     const s = this.scene;
     const v = this.view;
+    const pal = this.pal;
+    const LEAF = pal.accent;
+    const WARM = pal.warm;
+    const YOU = pal.visitor;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     if (!s) return;
@@ -464,7 +536,7 @@ export class WorldMapEngine {
       ctx.clip();
     }
     ctx.drawImage(this.dots, 0, 0, W, H);
-    if (s.ambient && !this.opts.reducedMotion) this.drawShimmer(t);
+    if (pal.shimmer && s.ambient && !this.opts.reducedMotion) this.drawShimmer(t);
     if (revealP < 1) {
       ctx.restore();
       const ring = ctx.createRadialGradient(hx, hy, Math.max(0, revealR - 60), hx, hy, revealR + 2);
@@ -477,7 +549,7 @@ export class WorldMapEngine {
       ctx.fill();
     }
 
-    ctx.globalCompositeOperation = "lighter";
+    ctx.globalCompositeOperation = pal.blend;
 
     // Sparkles on neutral land.
     if (!this.opts.reducedMotion && revealP >= 1) {
@@ -485,9 +557,9 @@ export class WorldMapEngine {
         const o = n * 4;
         const a = Math.pow(Math.max(0, Math.sin(t * this.twinkles[o + 3] + this.twinkles[o + 2])), 14);
         if (a < 0.02) continue;
-        ctx.fillStyle = `rgba(201,247,156,${a * 0.75})`;
+        ctx.fillStyle = `rgba(${pal.sparkle},${a * 0.8})`;
         ctx.beginPath();
-        ctx.arc(this.twinkles[o], this.twinkles[o + 1], 1.3, 0, TAU);
+        ctx.arc(this.twinkles[o], this.twinkles[o + 1], 1.5, 0, TAU);
         ctx.fill();
       }
     }
@@ -497,8 +569,8 @@ export class WorldMapEngine {
       const [gx, gy] = toScreen(v, this.glowAt[0], this.glowAt[1]);
       const gr = Math.min(W, H) * 0.42;
       const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
-      g.addColorStop(0, `rgba(${LEAF},${0.13 * this.glowAlpha})`);
-      g.addColorStop(1, `rgba(${LEAF},0)`);
+      g.addColorStop(0, `rgba(${WARM},${0.16 * pal.haloAlpha * this.glowAlpha})`);
+      g.addColorStop(1, `rgba(${WARM},0)`);
       ctx.fillStyle = g;
       ctx.fillRect(gx - gr, gy - gr, gr * 2, gr * 2);
     }
@@ -514,10 +586,13 @@ export class WorldMapEngine {
       if (reveal <= 0) return;
       const full = m.mode === "full";
       const radius = (full ? 34 : 22) * zf * (highlighted ? 1.25 : 1);
-      const alpha = (full ? 0.3 + 0.1 * Math.sin(t * 2 + i) : 0.17 + 0.05 * Math.sin(t * 1.3 + i)) * dim * reveal;
+      const alpha =
+        (full ? 0.3 + 0.1 * Math.sin(t * 2 + i) : (0.17 + 0.05 * Math.sin(t * 1.3 + i)) * (highlighted ? 1 : pal.potHalo)) *
+        dim *
+        reveal;
       const g = ctx.createRadialGradient(mx, my, 0, mx, my, radius);
-      g.addColorStop(0, `rgba(${LEAF},${alpha})`);
-      g.addColorStop(1, `rgba(${LEAF},0)`);
+      g.addColorStop(0, `rgba(${WARM},${Math.min(1, alpha * pal.haloAlpha)})`);
+      g.addColorStop(1, `rgba(${WARM},0)`);
       ctx.fillStyle = g;
       ctx.fillRect(mx - radius, my - radius, radius * 2, radius * 2);
 
@@ -544,7 +619,7 @@ export class WorldMapEngine {
       });
       if (s.beacon) {
         const [bx, by] = toScreen(v, s.beacon[0], s.beacon[1]);
-        if (Math.hypot(bx - hx, by - hy) > 24) targets.push({ x: bx, y: by, color: SKY, strong: true });
+        if (Math.hypot(bx - hx, by - hy) > 24) targets.push({ x: bx, y: by, color: YOU, strong: true });
       }
       targets.forEach((tg, i) => this.drawBeam(hx, hy, tg.x, tg.y, tg.color, tg.strong, i, t, grow));
     }
@@ -565,11 +640,11 @@ export class WorldMapEngine {
                 ? DOT_CLASS.POT
                 : DOT_CLASS.SOON;
       const dim = m.state === "dim" ? 0.35 : 1;
-      ctx.fillStyle = `rgba(${CLASS_RGB[cls]},${CLASS_ALPHA[cls] * dim})`;
+      ctx.fillStyle = `rgba(${pal.classRgb[cls]},${pal.classAlpha[cls] * dim})`;
       ctx.beginPath();
       ctx.arc(mx, my, 2.6, 0, TAU);
       ctx.fill();
-      ctx.strokeStyle = `rgba(${CLASS_RGB[cls]},${0.45 * dim})`;
+      ctx.strokeStyle = `rgba(${pal.classRgb[cls]},${0.45 * dim})`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(mx, my, 5.5, 0, TAU);
@@ -580,14 +655,14 @@ export class WorldMapEngine {
     if (s.beacon) {
       const [bx, by] = toScreen(v, s.beacon[0], s.beacon[1]);
       const g = ctx.createRadialGradient(bx, by, 0, bx, by, 22);
-      g.addColorStop(0, `rgba(${SKY},0.45)`);
-      g.addColorStop(1, `rgba(${SKY},0)`);
+      g.addColorStop(0, `rgba(${YOU},0.45)`);
+      g.addColorStop(1, `rgba(${YOU},0)`);
       ctx.fillStyle = g;
       ctx.fillRect(bx - 22, by - 22, 44, 44);
       if (!this.opts.reducedMotion) {
         for (let wave = 0; wave < 2; wave++) {
           const p = ((t + wave) % 2) / 2;
-          ctx.strokeStyle = `rgba(${SKY},${(1 - p) * 0.7})`;
+          ctx.strokeStyle = `rgba(${YOU},${(1 - p) * 0.7})`;
           ctx.lineWidth = 1.3;
           ctx.beginPath();
           ctx.arc(bx, by, 4 + 22 * easeQuadOut(p), 0, TAU);
@@ -595,14 +670,14 @@ export class WorldMapEngine {
         }
       }
       ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = `rgb(${SKY})`;
+      ctx.fillStyle = `rgb(${YOU})`;
       ctx.beginPath();
-      ctx.arc(bx, by, 3.4, 0, TAU);
+      ctx.arc(bx, by, 4, 0, TAU);
       ctx.fill();
-      ctx.strokeStyle = "rgba(6,10,8,0.9)";
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = `rgba(${pal.paper},0.95)`;
+      ctx.lineWidth = 1.6;
       ctx.stroke();
-      ctx.globalCompositeOperation = "lighter";
+      ctx.globalCompositeOperation = pal.blend;
     }
 
     // Focus reticles.
@@ -611,7 +686,7 @@ export class WorldMapEngine {
       const [mx, my] = toScreen(v, m.x, m.y);
       const sel = m.state === "selected";
       const rr = sel ? 17 : 11;
-      ctx.strokeStyle = `rgba(243,253,232,${sel ? 0.85 : 0.55})`;
+      ctx.strokeStyle = `rgba(${pal.ink},${sel ? 0.85 : 0.55})`;
       ctx.lineWidth = 1.2;
       ctx.setLineDash(sel ? [4, 4] : [2, 3]);
       ctx.lineDashOffset = -t * 10;
@@ -666,7 +741,7 @@ export class WorldMapEngine {
       return [a * x0 + b * cx + c * x1, a * y0 + b * cy + c * y1];
     };
 
-    const alpha = this.arcsAlpha;
+    const alpha = Math.min(1, this.arcsAlpha * this.pal.beamAlpha);
     const g = easeCubicInOut(clamp(grow - index * 0.05, 0, 1));
     if (g <= 0) return;
     ctx.strokeStyle = `rgba(${color},${(strong ? 0.2 : 0.09) * alpha})`;

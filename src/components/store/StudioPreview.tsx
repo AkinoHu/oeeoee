@@ -46,7 +46,7 @@ export function StudioPreview({
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-line bg-surface">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_50%_38%,rgb(155_227_74/0.16),transparent_70%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_50%_38%,rgb(var(--glow)/0.16),transparent_70%)]" />
       <div className="bg-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)] opacity-60" />
       <div
         className="pointer-events-none absolute inset-x-[18%] bottom-[11%] h-10 rounded-[100%] blur-2xl"
@@ -108,7 +108,7 @@ export function StudioPreview({
           {finishInfo && <span className="font-normal text-muted">· {lt(finishInfo.name, locale)}</span>}
         </p>
         {pot && (
-          <p className="font-mono text-xs text-muted">
+          <p className="font-bold tabular-nums text-xs text-muted">
             {t("studio.size.dims", { d: pot.dims.diameterCm, h: pot.dims.heightCm })}
           </p>
         )}

@@ -29,7 +29,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
   return (
     <section className="bg-grid relative flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-16">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgb(155_227_74/0.12),transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgb(var(--glow)/0.12),transparent_60%)]" />
       <Card className="relative w-full max-w-md p-8">
         <LogoMark className="mb-6 h-12 w-12" />
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>

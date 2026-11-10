@@ -1,7 +1,6 @@
 "use client";
 
 import { GeistMono } from "geist/font/mono";
-import { GeistSans } from "geist/font/sans";
 import { RotateCcw } from "lucide-react";
 import { useEffect, useSyncExternalStore } from "react";
 import { CompanionFace } from "@/components/companion-face/CompanionFace";
@@ -9,6 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { errorDigest, StatusArt, StatusScreen } from "@/components/ui/status-screen";
 import { I18nProvider, useT } from "@/i18n/client";
 import { isLocale, LOCALE_COOKIE, matchLocale, type Locale } from "@/i18n/config";
+import "@fontsource-variable/nunito";
 import "./globals.css";
 
 const HTML_LANG = { en: "en", zh: "zh-CN", ja: "ja" } as const;
@@ -37,7 +37,7 @@ export default function GlobalError({ error, retry }: { error: unknown; retry: (
   }, [error]);
 
   return (
-    <html lang={HTML_LANG[locale]} className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}>
+    <html lang={HTML_LANG[locale]} className={`${GeistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <I18nProvider locale={locale}>
           <GlobalErrorScreen error={error} retry={retry} />

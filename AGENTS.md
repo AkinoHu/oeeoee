@@ -20,9 +20,13 @@ that hosts the companion's brain. See `docs/PLAN.md` and `docs/TASKS.md`.
   (classic dynamic rendering). `params`, `searchParams`, `cookies()`, `headers()` are async.
   `PageProps<"/route">` / `LayoutProps<"/route">` are global generated types (`next typegen`).
   `middleware.ts` is now `proxy.ts` (we don't use one).
-- Tailwind CSS v4 — tokens in `src/app/globals.css` (`bg-bg`, `bg-surface`, `bg-surface-2`,
-  `border-line`, `text-fg`, `text-muted`, `text-faint`, `leaf-50…900`, `sky`, `sun`, `rose`,
-  helpers `.glass`, `.text-gradient`, `.bg-grid`, `.eyebrow`). Dark-only design.
+- Tailwind CSS v4 — tokens in `src/app/globals.css`, design rules in `docs/DESIGN.md`. Warm "day"
+  theme by default; wrap a block in `.theme-night` for the lamp-lit mood (same utilities).
+  Semantic utilities only: `bg-bg`, `bg-surface(-2/-3)`, `border-line(-strong)`, `text-fg`,
+  `text-muted`, `text-faint`, `leaf-50…900` (200–300 = readable accent), `sky`, `sun`, `rose`,
+  warm accents `honey`, `peach`, `clay`, `sprout`, `bg-screen` (the pot's display). Helpers:
+  `.glass`, `.text-gradient`, `.bg-grid`, `.eyebrow`, `.lamp-glow`, `shadow-soft`. Never hard-code
+  colours — use `rgb(var(--accent|--glow|--ink)/a)` for arbitrary alphas.
 - Prisma 7 + PostgreSQL. Client: `import { prisma } from "@/lib/db"`. Generated types:
   `@/generated/prisma/client`. **Do not edit `prisma/schema.prisma`** without coordinating.
 - Better Auth (Google OAuth; email+password only when `AUTH_DEV_PASSWORD_LOGIN=true`).
@@ -30,7 +34,8 @@ that hosts the companion's brain. See `docs/PLAN.md` and `docs/TASKS.md`.
   Client: `signIn`, `signOut`, `useSession` from `@/lib/auth-client`.
 - Stripe: `getStripe()` from `@/lib/stripe` (null when unconfigured). Feature flags: `features` from `@/lib/env`.
 - Motion: `import { motion } from "motion/react"`. Icons: `lucide-react`. Class merge: `cn()` from `@/lib/utils`.
-- Map: `d3-geo` + `topojson-client` + `world-atlas` (`world-atlas/countries-110m.json`, `countries-50m.json`).
+- Map: `d3-geo` + `topojson-client` + `world-atlas`. Miller projection; the dot grid is precomputed by
+  `node scripts/map/build-dots.mjs` (re-run after changing the projection or the atlas).
 
 ## i18n (en / zh / ja)
 
@@ -40,6 +45,7 @@ that hosts the companion's brain. See `docs/PLAN.md` and `docs/TASKS.md`.
 - Interpolation: `t("cart.count", { n: 3 })` with `"{n} items"`.
 - Catalog text uses `LocalizedText` — render with `lt(text, locale)` from `@/data`.
 - Never hard-code user-visible strings in components.
+- Voice: warm and short, in the companion's first person where it fits (see `docs/DESIGN.md` §4).
 
 ## Catalog
 
@@ -54,8 +60,9 @@ that hosts the companion's brain. See `docs/PLAN.md` and `docs/TASKS.md`.
 - `PotPreview` (`@/components/pot/PotPreview`) — `{ size, finish, plantId, expression, ringRotating, lightOn, annotated }`.
 - `PlantArt` (`@/components/plant-art/PlantArt`) — `{ plantId, width, animated }`.
 - `CartProvider` / `CartButton` (`@/components/cart/*`).
-- UI primitives: `@/components/ui/button` (`Button`, `ButtonLink`, `buttonVariants`) and
-  `@/components/ui/primitives` (`Container`, `Card`, `Badge`, `Input`, `Textarea`, `Select`, `Label`, `SectionHeading`).
+- UI primitives: `@/components/ui/button` (`Button`, `ButtonLink`, `buttonVariants`),
+  `@/components/ui/primitives` (`Container`, `Card`, `Badge`, `Input`, `Textarea`, `Select`, `Label`, `SectionHeading`)
+  and `@/components/ui/speech-bubble` (`SpeechBubble` — the companion's voice).
 
 ## Commands
 
