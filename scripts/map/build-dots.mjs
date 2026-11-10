@@ -4,9 +4,11 @@
  *
  *   node scripts/map/build-dots.mjs
  *
- * Land from world-atlas/countries-50m is projected with Equal Earth into a
- * fixed reference space (1000 units wide, Antarctica cropped) and sampled on
- * a square grid of 1 unit. Every land cell records which country feature it
+ * Land from world-atlas/countries-50m is projected with the Miller cylindrical
+ * projection into a fixed reference space (1000 units wide, Antarctica
+ * cropped) and sampled on a square grid of 1 unit. Miller keeps north straight
+ * up everywhere, so countries look the way people know them from web maps
+ * (an equal-area projection shears everything far from the central meridian). Every land cell records which country feature it
  * belongs to, so the client never runs point-in-polygon tests: it decodes the
  * run-length rows below and only picks colours.
  *
@@ -21,7 +23,7 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { geoEqualEarth, geoPath } from "d3-geo";
+import { geoPath, geoProjection } from "d3-geo";
 import { feature } from "topojson-client";
 import { FEATURE_TABLE, UNCODED_REGIONS } from "./countries.mjs";
 
@@ -30,13 +32,19 @@ const root = resolve(here, "../..");
 const require = createRequire(resolve(root, "package.json"));
 const topology = require("world-atlas/countries-50m.json");
 
-// Keep in sync with src/components/map/engine/projection.ts
+// Keep in sync with src/components/map/engine/view.ts
 const REF_W = 1000;
-const LAT_TOP = 84;
+const LAT_TOP = 80;
 const LAT_BOTTOM = -57;
 const SPACING = 1; // grid spacing in reference units (fine level)
 
-const projection = geoEqualEarth().fitWidth(REF_W, { type: "Sphere" });
+/** Miller cylindrical projection (radians in, unit-sphere coordinates out). */
+function millerRaw(lambda, phi) {
+  return [lambda, 1.25 * Math.log(Math.tan(Math.PI / 4 + 0.4 * phi))];
+}
+millerRaw.invert = (x, y) => [x, 2.5 * Math.atan(Math.exp(0.8 * y)) - 0.625 * Math.PI];
+
+const projection = geoProjection(millerRaw).fitWidth(REF_W, { type: "Sphere" });
 const yTop = projection([0, LAT_TOP])[1];
 const yBottom = projection([0, LAT_BOTTOM])[1];
 const REF_H = yBottom - yTop;
@@ -190,7 +198,7 @@ const features = featureList.map((f, fi) => {
 
 const out = {
   meta: {
-    projection: "equalEarth",
+    projection: "miller",
     width: REF_W,
     height: round1(REF_H),
     latTop: LAT_TOP,

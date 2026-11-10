@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { geoEqualEarth } from "d3-geo";
+import { computeLayout, lonLatToRef, regionView, toScreen } from "@/components/map/engine/view";
 import { describe, expect, it } from "vitest";
 import { locales } from "@/i18n/config";
 import {
@@ -289,27 +289,26 @@ describe("regions", () => {
     for (const r of listRegions()) expectLocalized(r.name, r.id);
   });
 
-  // Mirrors how the map frames a region: world fitted to the viewport, scaled by
-  // `zoom` and centred on `center`. Every market marker must land inside the
-  // frame with a margin, on desktop and on a phone.
+  // Uses the map's own camera: every market marker of a region must land inside
+  // the free map area (outside the side panel / bottom sheet) with a margin.
   it.each([
     [1280, 720],
+    [1440, 836],
     [390, 780],
   ])("frames all of its markets in a %ix%i viewport", (w, h) => {
-    const baseScale = geoEqualEarth().fitSize([w, h], { type: "Sphere" }).scale();
-    const margin = 0.08;
+    const layout = computeLayout(w, h);
+    const area = layout.focusArea;
+    const margin = 0.06;
     for (const r of listRegions()) {
-      const projection = geoEqualEarth()
-        .scale(baseScale * r.zoom)
-        .translate([w / 2, h / 2]);
-      const [cx, cy] = projection(r.center)!;
-      projection.translate([w - cx, h - cy]);
+      const view = regionView(layout, r.center, r.zoom);
       for (const c of countries.filter((country) => country.region === r.id)) {
-        const [x, y] = projection(c.center)!;
-        expect(x / w, `${r.id} ${c.code} x`).toBeGreaterThan(margin);
-        expect(x / w, `${r.id} ${c.code} x`).toBeLessThan(1 - margin);
-        expect(y / h, `${r.id} ${c.code} y`).toBeGreaterThan(margin);
-        expect(y / h, `${r.id} ${c.code} y`).toBeLessThan(1 - margin);
+        const [x, y] = toScreen(view, ...lonLatToRef(c.center));
+        const fx = (x - area.x) / area.w;
+        const fy = (y - area.y) / area.h;
+        expect(fx, `${r.id} ${c.code} x`).toBeGreaterThan(margin);
+        expect(fx, `${r.id} ${c.code} x`).toBeLessThan(1 - margin);
+        expect(fy, `${r.id} ${c.code} y`).toBeGreaterThan(margin);
+        expect(fy, `${r.id} ${c.code} y`).toBeLessThan(1 - margin);
       }
     }
   });
